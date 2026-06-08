@@ -1,0 +1,10 @@
+transition: |300> -> |322>
+selected_active_harmonics: 4
+multi3_active_harmonics: 3,4,5
+max_abs_population_difference: 1.3002596773976077e-07
+max_fractional_population_difference: 0.009437680349049817
+max_abs_coherence_difference: 2.4301798735811442e-05
+max_fractional_coherence_difference: 0.006547942589126267
+max_fractional_semimajor_axis_difference: 4.435031563239513e-06
+final_fractional_semimajor_axis_difference: -1.4894666621585666e-06
+duration_years: 0.4
