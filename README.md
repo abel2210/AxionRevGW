@@ -113,61 +113,6 @@ High-frequency fixed-mass-ratio benchmarks:
 python run_highfreq_q001_benchmarks.py
 ```
 
-## Archive Contents
+## Scope
 
-- `frequency_data.zip`
-
-  Frequency-domain data used by the stochastic-background and sensitivity-curve plotting scripts. After extraction, this archive creates the repository-level directory:
-
-  ```text
-  frequency_data/
-  ```
-
-- `benchmark_highfreq_q001_m1_0p01_q001.zip`
-- `benchmark_highfreq_q001_m1_0p1_q001.zip`
-- `benchmark_highfreq_q001_m1_1_q001.zip`
-
-  High-frequency fixed-mass-ratio benchmark outputs for three primary masses. Each archive contains one subdirectory that should be placed under:
-
-  ```text
-  benchmark_highfreq_q001/
-  ```
-
-- `benchmark_highfreq_q001_summary.csv`
-
-  Summary table for the fixed-`q=0.01` high-frequency benchmark set. This file should be copied to:
-
-  ```text
-  benchmark_highfreq_q001/summary.csv
-  ```
-
-## Restoring the Full Data Layout
-
-From the repository root, create the benchmark directory and extract the archives with:
-
-```powershell
-New-Item -ItemType Directory -Force -Path .\benchmark_highfreq_q001
-
-Expand-Archive .\data_archives\frequency_data.zip -DestinationPath .
-
-Expand-Archive .\data_archives\benchmark_highfreq_q001_m1_0p01_q001.zip -DestinationPath .\benchmark_highfreq_q001
-Expand-Archive .\data_archives\benchmark_highfreq_q001_m1_0p1_q001.zip -DestinationPath .\benchmark_highfreq_q001
-Expand-Archive .\data_archives\benchmark_highfreq_q001_m1_1_q001.zip -DestinationPath .\benchmark_highfreq_q001
-
-Copy-Item .\data_archives\benchmark_highfreq_q001_summary.csv .\benchmark_highfreq_q001\summary.csv
-```
-
-The expected restored layout is:
-
-```text
-frequency_data/
-benchmark_highfreq_q001/
-|-- summary.csv
-|-- m1_0p01_q001/
-|-- m1_0p1_q001/
-`-- m1_1_q001/
-```
-
-## Notes
-
-The archives contain derived numerical outputs, not source code. The Python scripts in the repository can regenerate these data products, but doing so may require longer integration runs. The compressed archives are therefore supplied to make figure reproduction and numerical cross-checks faster and more transparent.
+This repository contains code, numerical data, and figures only. Manuscript drafts, cover letters, presentation slides, internal notes, and review-response documents have been removed from the public code package.

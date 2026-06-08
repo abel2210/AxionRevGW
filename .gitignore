@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.log
+*.aux
+*.out
+*.toc
+*.nav
+*.snm
+*.synctex.gz
+.vscode/
+_tmp*/
+build/
