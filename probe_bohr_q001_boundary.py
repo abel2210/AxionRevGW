@@ -12,7 +12,7 @@ Q_REF = 1.0e-2
 E_REF = 0.64
 M1_MSUN = 1.0
 CLOUD_MASS_FRACTION = 0.005
-OUTPUT_PATH = Path("diagnostics") / "bohr_q001_boundary_probe.txt"
+OUTPUT_PATH = Path("diagnostics") / "bohr_q001_boundary_probe.md"
 
 
 def roche_lobe_fraction_primary(q: float) -> float:

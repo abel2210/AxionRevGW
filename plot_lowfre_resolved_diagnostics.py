@@ -12,9 +12,8 @@ from matplotlib.ticker import MaxNLocator
 
 BASE_DIR = Path(__file__).resolve().parent
 SNR_DATA_DIR = BASE_DIR / "snr_scan_data"
-PROBE_DIR = BASE_DIR / "diagnostics" / "lowfre_mismatch_threshold_probe"
-PROBE_REPORT_CSV = PROBE_DIR / "lowfre_mismatch_threshold_probe.csv"
-PROBE_MISMATCH_DATA_DIR = PROBE_DIR / "mismatch_data"
+PROBE_REPORT_CSV = BASE_DIR / "diagnostics" / "lowfre_mismatch_threshold_probe.csv"
+PROBE_MISMATCH_DATA_DIR = BASE_DIR / "diagnostics" / "lowfre_threshold_probe_mismatch_data"
 FIGURE_DIR = BASE_DIR / "figures"
 
 SNR_COLORBAR_MAX = 200.0
@@ -297,7 +296,7 @@ def main() -> None:
                 cax=cax,
                 ticks=[0, 25, 50, 100, 150, 200],
             )
-            colorbar.set_label("DECIGO axion-line SNR", fontsize=5.4, labelpad=1.2)
+            colorbar.set_label("DECIGO transition SNR", fontsize=5.4, labelpad=1.2)
             colorbar.ax.tick_params(labelsize=4.8, length=2.0, pad=0.8)
 
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)

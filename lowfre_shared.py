@@ -390,7 +390,7 @@ class EccentricResonantTidalGA:
 
         self.e_init = float(e_init)
         if f_orb_init is None:
-            # 默认让轨道从共振点下方开始扫频，而不是直接手调 f_orb_init
+            # Start below the selected resonance unless a manual frequency is supplied.
             self.f_orb_init = self._initial_orbital_frequency_for_transition(
                 requested_transition_frequency_hz,
                 self.resonance_harmonic,

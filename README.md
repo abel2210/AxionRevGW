@@ -2,7 +2,7 @@
 
 Code, numerical data, and figure assets supporting the paper
 
-**Revival of Gravitational Waves from Tidally Excited Axion Clouds**
+**Finite Coherence in Gravitational Waves from Tidally Excited Axion Clouds**
 
 This repository contains the production scripts and derived data used to generate the figures and numerical checks reported in the manuscript and Supplemental Material. It is intended as a public technical companion to the paper under the APS data and code availability policy.
 
@@ -36,7 +36,8 @@ This repository contains the production scripts and derived data used to generat
 ### Figure and Scan Scripts
 
 - `plot_bohr_orbit_time_summary_concise.py`: compact Bohr event time-domain summary.
-- `plot_bohr_quench_revival_evidence.py`: Landau-Zener coherence evidence figure.
+- `plot_bohr_visibility_prl.py`: four-panel Landau-Zener visibility and outgoing-coherence evidence figure.
+- `bohr_lz_tools.py`, `probe_bohr_alpha_family.py`, `probe_bohr_visibility_sweep.py`: numerical support for the finite-coherence visibility test.
 - `plot_bohr_domain_visibility_map.py`: parameter-domain and waveform-normalization map.
 - `plot_lowfre_resolved_diagnostics.py`: low-frequency SNR and mismatch diagnostic figure.
 - `plot_sgwb_remnant_rate_band.py`: rate-normalized stochastic-background spectra.
@@ -77,13 +78,17 @@ Main dependencies:
 - `scipy`
 - `matplotlib`
 
+Version-level changes are recorded in `CHANGELOG.md`.
+
 ## Reproducing Figures
 
 Run scripts from the repository root.
 
 ```bash
 python plot_bohr_orbit_time_summary_concise.py
-python plot_bohr_quench_revival_evidence.py
+python probe_bohr_alpha_family.py
+python probe_bohr_visibility_sweep.py
+python plot_bohr_visibility_prl.py
 python plot_bohr_domain_visibility_map.py
 python plot_lowfre_resolved_diagnostics.py
 python plot_sgwb_remnant_rate_band.py

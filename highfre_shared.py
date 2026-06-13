@@ -1,4 +1,4 @@
-﻿import time
+import time
 import os
 from pathlib import Path
 import math
@@ -134,7 +134,7 @@ class EccentricResonantTidalGA:
 
     def __init__(
         self,
-        # Source parameters: black-hole mass, companion mass, cloud, and orbital setup.
+        # --- 婧愬弬鏁帮細榛戞礊璐ㄩ噺銆佷即鏄熻川閲忋€佷簯鍙傛暟 ---
         M_bh=0.001,
         M_star=0.0001,
         alpha=DEFAULT_HIGHFREQ_ALPHA,
@@ -220,7 +220,7 @@ class EccentricResonantTidalGA:
 
         self.e_init = float(e_init)
         if f_orb_init is None:
-            # Start below the selected resonance unless an initial orbital frequency is supplied.
+            # Start below the selected resonance unless a manual frequency is supplied.
             self.f_orb_init = self.orbital_start_ratio * requested_transition_frequency_hz / self.resonance_harmonic
         else:
             self.f_orb_init = float(f_orb_init)
@@ -274,7 +274,7 @@ class EccentricResonantTidalGA:
         # The orbital RHS already applies the opposite sign, so downward transitions
         # (negative DeltaE_cloud) feed energy back into the orbit.
         self.delta_E_orbit_backreaction = self.backreaction_macro_scale * self.transition_energy_change_omega
-        # For delta_m = 0 Bohr transitions this reduces to zero angular-momentum exchange.
+        # For Δm = 0 Bohr transitions this reduces to zero angular-momentum exchange.
         self.delta_L_orbit_backreaction = self.backreaction_macro_scale * self.delta_m_transition
         self.delta_E_high_low_backreaction = self.backreaction_macro_scale * self.transition_omega
         self.delta_m_high_low = self.transition_energy_sign * self.delta_m_transition
@@ -400,7 +400,7 @@ class EccentricResonantTidalGA:
         return [dadt, dedt, omega_val, d_cg.real, d_cg.imag, d_ce.real, d_ce.imag]
 
     def _resolve_transition_states(self):
-        # Default state choices follow the fine, hyperfine, and Bohr examples used in the paper.
+        # 榛樿鎬侀€夋嫨鍜屽弬鏁版眰瑙ｅ櫒/璁烘枃璁ㄨ淇濇寔涓€鑷达細
         # fine: |322> -> |300>, hyperfine: |211> -> |21-1>
         if self.initial_state is not None and self.final_state is not None:
             return tuple(self.initial_state), tuple(self.final_state)
@@ -609,7 +609,7 @@ class EccentricResonantTidalGA:
         return abs(full_integral)
 
     def _precompute_mixing_overlaps(self):
-        # Precompute radial and angular overlaps; eta then only requires orbital-radius interpolation.
+        # 棰勮绠楄鏂?A.3-A.5 涓殑寰勫悜/瑙掑悜閲嶅彔锛?        # 鍚庣画 eta(A.6) 鍙渶瑕侀殢杞ㄩ亾鍗婂緞鍋氭彃鍊硷紝閬垮厤閲嶅绉垎
         initial_state = self.transition_solver_data["initial_state"]
         final_state = self.transition_solver_data["final_state"]
 
@@ -1746,7 +1746,7 @@ class EccentricResonantTidalGA:
         return min(float(freq_hz_max), 1.25 * highest_feature_hz)
 
     def build_windowed_fft(self, waveform_window, pad_factor=8, tukey_alpha=0.03):
-        # Use one taper consistently for the exported FFT products.
+        # 棰戝煙鍒嗘瀽缁熶竴鍦ㄨ繖閲屽仛锛?        # 1. 鍏堝幓鍧囧€硷紝鎶戝埗浣庨娉勬紡
         # Use one taper consistently for the exported FFT products.
         t_obs = waveform_window["t_obs"]
         dt_obs = t_obs[1] - t_obs[0]
@@ -1839,12 +1839,12 @@ class EccentricResonantTidalGA:
         required_points = int(np.ceil(duration_obs * highest_feature_hz * float(samples_per_cycle))) + 1
         return int(min(max(int(requested_points), required_points, 16), int(max_points)))
 
-    def build_frequency_spectrum(self, waveform_window, pad_factor=64):
+    def build_frequency_spectrum(self, waveform_window, pad_factor=64): # <--- pad_factor 默认值拉高到 64
          t_obs = waveform_window["t_obs"]
          dt_obs = t_obs[1] - t_obs[0]
          n_samples = len(t_obs)
         
-         # Zero-pad the FFT by the requested factor.
+         # 极致零填充：将原本的数组长度扩展 64 倍（后面全补 0）
          n_fft = int(pad_factor * n_samples)
 
          # Use the same strong taper as the exported FFT path.
@@ -1854,16 +1854,16 @@ class EccentricResonantTidalGA:
          h_axion = (waveform_window["h_axion"] - np.mean(waveform_window["h_axion"])) * taper
          h_total = (waveform_window["h_total"] - np.mean(waveform_window["h_total"])) * taper
 
-         # NumPy zero-pads automatically when n_fft exceeds the input length.
+         # 执行 FFT：numpy 的 rfft 发现 n_fft > len(h_binary) 时，会自动在尾部补零
          freq_hz = np.fft.rfftfreq(n_fft, dt_obs)
          spec_binary = np.abs(np.fft.rfft(h_binary, n=n_fft))
          spec_axion = np.abs(np.fft.rfft(h_axion, n=n_fft))
          spec_total = np.abs(np.fft.rfft(h_total, n=n_fft))
 
-         # Normalize spectra for plotting.
+         # 归一化处理
          normalization = max(np.max(spec_binary), np.max(spec_total), 1.0e-30)
         
-         # Compute the displayed frequency range and return the spectrum dictionary.
+         # ... 后续的频率范围计算和返回字典保持不变 ...
          f_transition_obs_hz = self.transition_omega / (2.0 * np.pi * (1.0 + self.z))
          f_orb_res_obs_hz = waveform_window["orbital_frequency_res_obs"]
          max_display_hz = self._suggest_max_display_hz(
