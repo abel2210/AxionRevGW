@@ -201,7 +201,8 @@ def build_energy_spectrum(metadata: dict[str, str], data: np.ndarray) -> tuple[n
     source_amplitude = amplitude_obs / (1.0 + redshift)
     angle_average_factor = angle_average_factor_from_metadata(metadata)
     dE_dnu = (
-        (np.pi**2 * C**3 / (2.0 * G))
+        # Total emitted energy spectrum after integrating over source angles.
+        (2.0 * np.pi**2 * C**3 / G)
         * distance_m**2
         * source_freq_hz**2
         * angle_average_factor

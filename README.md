@@ -36,8 +36,7 @@ This repository contains the production scripts and derived data used to generat
 ### Figure and Scan Scripts
 
 - `plot_bohr_orbit_time_summary_concise.py`: compact Bohr event time-domain summary.
-- `plot_bohr_visibility_prl.py`: four-panel Landau-Zener visibility and outgoing-coherence evidence figure.
-- `bohr_lz_tools.py`, `probe_bohr_alpha_family.py`, `probe_bohr_visibility_sweep.py`: numerical support for the finite-coherence visibility test.
+- `bohr_lz_tools.py`, `probe_bohr_alpha_family.py`, `probe_bohr_visibility_sweep.py`: numerical support for the finite-coherence visibility figure.
 - `plot_bohr_domain_visibility_map.py`: parameter-domain and waveform-normalization map.
 - `plot_lowfre_resolved_diagnostics.py`: low-frequency SNR and mismatch diagnostic figure.
 - `plot_sgwb_remnant_rate_band.py`: rate-normalized stochastic-background spectra.
@@ -88,13 +87,12 @@ Run scripts from the repository root.
 python plot_bohr_orbit_time_summary_concise.py
 python probe_bohr_alpha_family.py
 python probe_bohr_visibility_sweep.py
-python plot_bohr_visibility_prl.py
 python plot_bohr_domain_visibility_map.py
 python plot_lowfre_resolved_diagnostics.py
 python plot_sgwb_remnant_rate_band.py
 ```
 
-The generated figures are written to `figures/`.
+The finite-coherence figure is assembled from the outputs of `probe_bohr_alpha_family.py` and `probe_bohr_visibility_sweep.py`. Generated figures are written to `figures/`.
 
 Some scripts can be computationally heavier because they integrate coupled orbital and cloud evolution. The supplied data directories contain the production outputs used to make the paper figures.
 
@@ -120,4 +118,4 @@ python run_highfreq_q001_benchmarks.py
 
 ## Scope
 
-This repository contains code, numerical data, and figures only. Manuscript drafts, cover letters, presentation slides, internal notes, and review-response documents have been removed from the public code package.
+This repository contains code, numerical data, and figures only. Manuscript drafts, cover letters, presentation slides, internal notes, technical audit reports, and review-response documents are outside the public code package.

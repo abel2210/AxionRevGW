@@ -12,11 +12,15 @@ import highfre644v
 
 BASE_DIR = Path(__file__).resolve().parent
 FIGURE_DIR = BASE_DIR / "figures"
+ORBITAL_START_RATIO = 0.90
+LZ_WINDOW_WIDTHS = 240.0
+PLOT_HALF_WINDOW_S = 165.0
+PHASE_INSET_HALF_WINDOW_S = 22.0
 
 
 def run_bohr(module):
     sim = module.EccentricResonantTidalGA(
-        M_bh=0.001,
+        M_bh=0.01,
         M_star=0.00001,
         alpha=0.3,
         bh_spin=0.7,
@@ -24,11 +28,13 @@ def run_bohr(module):
         z=0.0,
         e_init=0.65,
         f_orb_init=None,
-        cloud_mass_fraction=0.005,
+        orbital_start_ratio=ORBITAL_START_RATIO,
+        lz_window_widths=LZ_WINDOW_WIDTHS,
+        cloud_mass_fraction=1.0e-4,
     )
     duration_yr = sim.recommended_duration_to_cover_selected_resonance(
-        initial_duration_yr=2.0e-8,
-        max_duration_yr=2.0e-6,
+        initial_duration_yr=2.0e-6,
+        max_duration_yr=1.0e-3,
         post_event_padding_orbits=160.0,
     )
     results = sim.run(
@@ -77,16 +83,36 @@ def mark_resonance(ax):
     ax.axvline(0.0, color="0.15", lw=0.85, alpha=0.78)
 
 
-def add_phase_residual_inset(ax, x_ms, phase_residual, color):
-    inset = ax.inset_axes([0.56, 0.13, 0.38, 0.32])
+def smooth_series(values, window_points=701):
+    values = np.asarray(values, dtype=float)
+    window_points = int(max(3, window_points))
+    if window_points % 2 == 0:
+        window_points += 1
+    if values.size < 2 * window_points:
+        return values
+    kernel = np.ones(window_points, dtype=float) / float(window_points)
+    padded = np.pad(values, window_points // 2, mode="edge")
+    return np.convolve(padded, kernel, mode="valid")
+
+
+def add_phase_residual_inset(ax, x_s, phase_residual, color):
+    inset = ax.inset_axes([0.56, 0.61, 0.38, 0.32])
     inset.set_facecolor((1.0, 1.0, 1.0, 0.88))
     inset.axhline(0.0, color="0.45", lw=0.9, alpha=0.25)
     inset.axvline(0.0, color="0.45", lw=0.9, alpha=0.25)
-    inset.plot(x_ms, phase_residual, color=color, lw=0.95)
-    inset.set_xlim(-18.0, 18.0)
-    inset.set_ylim(-16.5, 16.5)
-    inset.set_xticks([-15, 0, 15])
-    inset.set_yticks([-15, 0, 15])
+    inset.plot(x_s, phase_residual, color=color, lw=0.95)
+    inset.set_xlim(-PHASE_INSET_HALF_WINDOW_S, PHASE_INSET_HALF_WINDOW_S)
+    local = np.asarray(phase_residual)[
+        (np.asarray(x_s) >= -PHASE_INSET_HALF_WINDOW_S)
+        & (np.asarray(x_s) <= PHASE_INSET_HALF_WINDOW_S)
+    ]
+    if local.size:
+        ymin = float(np.nanmin(local))
+        ymax = float(np.nanmax(local))
+        pad = max(0.08 * (ymax - ymin), 0.25)
+        inset.set_ylim(ymin - pad, ymax + pad)
+    inset.set_xticks([-20, 0, 20])
+    inset.set_yticks([])
     inset.set_title(r"$\Delta\Phi_{\rm bin}/2\pi$", fontsize=4.6, pad=0.6)
     inset.tick_params(axis="both", which="major", labelsize=4.3, direction="in", top=True, right=True, pad=0.5)
     for spine in inset.spines.values():
@@ -122,10 +148,10 @@ def plot_case(
     orbit = results["orbit"]
 
     t_orbit = np.asarray(orbit["t"], dtype=float)
-    x_orbit_ms = (t_orbit - t_res) * 1.0e3
+    x_orbit_s = t_orbit - t_res
     delta_a = relative_delta_a(results, t_orbit)
 
-    half_window_s = 18.0e-3
+    half_window_s = PLOT_HALF_WINDOW_S
     window = sim.build_waveform_window_between(
         orbit,
         results["cloud"],
@@ -134,54 +160,57 @@ def plot_case(
         sample_points=12000,
     )
     t_wave = np.asarray(window["t_source"], dtype=float)
-    x_wave_ms = (t_wave - t_res) * 1.0e3
-    h_axion, coherence = direction_signed_axion_strain(sim, results["cloud"], t_wave)
+    x_wave_s = t_wave - t_res
+    _, coherence = direction_signed_axion_strain(sim, results["cloud"], t_wave)
     phase_residual = binary_phase_residual_cycles(results, t_wave, t_res)
+    coherence_smooth = smooth_series(coherence, window_points=max(301, len(coherence) // 180))
+    amplitude_envelope = abs(float(sim._cloud_amplitude())) * coherence_smooth
 
     mark_resonance(ax_orbit)
-    ax_orbit.plot(x_orbit_ms, delta_a, color=orbit_color, lw=1.25)
+    ax_orbit.plot(x_orbit_s, delta_a, color=orbit_color, lw=1.25)
     ax_orbit.set_title(title, fontsize=6.1, pad=1.2)
     if show_left_labels:
         ax_orbit.set_ylabel(r"$(a-a_{\rm P})/a_{\rm res}$", fontsize=5.8, labelpad=1.0)
     else:
         ax_orbit.tick_params(axis="y", labelleft=False)
-    ax_orbit.set_ylim(-0.21, 0.21)
+    ax_orbit.set_ylim(-0.042, 0.042)
 
     mark_resonance(ax_wave)
-    strain_stride = max(1, int(np.ceil(len(x_wave_ms) / 1200)))
-    h_axion_scaled = 1.0e27 * h_axion
-    ax_wave.plot(
-        x_wave_ms[::strain_stride],
-        h_axion_scaled[::strain_stride],
+    envelope_scaled = 1.0e27 * amplitude_envelope
+    ax_wave.fill_between(
+        x_wave_s,
+        0.0,
+        envelope_scaled,
         color="#1F78B4",
-        lw=0.42,
-        alpha=0.82,
-        label=r"$h_a$",
+        alpha=0.18,
+        lw=0.0,
     )
+    ax_wave.plot(x_wave_s, envelope_scaled, color="#1F78B4", lw=0.75, alpha=0.82)
     if show_left_labels:
-        ax_wave.set_ylabel(r"$10^{27}h_a$", fontsize=5.8, color="#1F78B4", labelpad=1.0)
+        ax_wave.set_ylabel(r"$10^{27}|h_a|_{\rm env}$", fontsize=5.8, color="#1F78B4", labelpad=1.0)
     else:
         ax_wave.tick_params(axis="y", labelleft=False)
     ax_wave.tick_params(axis="y", labelcolor="#1F78B4")
-    ax_wave.set_xlabel(r"$t-t_{\rm res}$ [ms]", fontsize=5.8, labelpad=1.0)
+    ax_wave.set_xlabel(r"$t-t_{\rm res}$ [s]", fontsize=5.8, labelpad=1.0)
 
     ax_coh = ax_wave.twinx()
     ax_wave.set_zorder(ax_coh.get_zorder() + 1)
     ax_wave.patch.set_visible(False)
     ax_coh.patch.set_visible(False)
-    ax_coh.plot(x_wave_ms, coherence, color="#D55E00", lw=1.05, alpha=0.96, label=r"$|c_i^\ast\tilde c_f|$")
+    ax_coh.plot(x_wave_s, coherence_smooth, color="#D55E00", lw=1.05, alpha=0.96, label=r"$|c_i^\ast\tilde c_f|$")
+    ax_coh.set_ylim(0.0, 0.53)
     if show_coherence_axis:
         ax_coh.set_ylabel(r"$|c_i^\ast\tilde c_f|$", fontsize=5.8, color="#D55E00", labelpad=1.0)
         ax_coh.tick_params(axis="y", labelcolor="#D55E00", pad=1.0)
     else:
         ax_coh.tick_params(axis="y", labelright=False, right=False)
-    add_phase_residual_inset(ax_wave, x_wave_ms, phase_residual, orbit_color)
+    add_phase_residual_inset(ax_wave, x_wave_s, phase_residual, orbit_color)
 
     for ax in (ax_orbit, ax_wave, ax_coh):
         ax.tick_params(axis="both", which="major", labelsize=5.2, direction="in", top=True, right=True, pad=1.0)
 
     for ax in (ax_orbit, ax_wave):
-        ax.set_xlim(-18.0, 18.0)
+        ax.set_xlim(-PLOT_HALF_WINDOW_S, PLOT_HALF_WINDOW_S)
         ax.grid(False)
 
 
@@ -219,8 +248,8 @@ def main():
         show_coherence_axis=True,
     )
 
-    axes[0, 0].text(0.03, 0.86, "upward", transform=axes[0, 0].transAxes, fontsize=5.8)
-    axes[0, 1].text(0.03, 0.86, "downward", transform=axes[0, 1].transAxes, fontsize=5.8)
+    axes[0, 0].text(0.03, 0.83, "upward", transform=axes[0, 0].transAxes, fontsize=5.8)
+    axes[0, 1].text(0.03, 0.83, "downward", transform=axes[0, 1].transAxes, fontsize=5.8)
     fig.subplots_adjust(left=0.14, right=0.88, bottom=0.115, top=0.915, wspace=0.055, hspace=0.055)
 
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)

@@ -9,6 +9,18 @@
 # orbital_frequency_init_hz=5.1120000000000001e+00
 # duration_source_s=3.1298904538341159e+01
 # window_orbits=1.6000000000000000e+02
+# sample_points=8192
+# pad_factor=4
+# fft_nyquist_hz=1.3085122500000000e+02
+# fft_dt_obs_s=3.8211335048640165e-03
+# fft_df_hz=7.9865249633789062e-03
+# fft_n_samples=8192
+# fft_n_fft=32768
+# fft_window=kaiser
+# fft_window_beta=1.4000000000000000e+01
+# fft_mean_removed=1
+# fourier_convention=h_tilde_integral_h_exp_minus_2pi_i_f_t_dt
+# fft_amplitude_units=strain_seconds
 # frequency_frame=observer
 # columns=frequency_hz amplitude_abs h_tilde_real h_tilde_imag
 0.000000000000000000e+00 1.292766071120319329e-25 -1.292766071120319329e-25 0.000000000000000000e+00

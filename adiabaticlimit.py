@@ -57,6 +57,7 @@ class AdiabaticPhaseDiagram:
         self.tidal_l = int(tidal_l)
         self.radial_power = self.tidal_l + 1
         self._hansen_cache = {}
+        self._fourier_cache = {}
         
         # 预计算：无量纲的空间重叠积分（不依赖于 M 和 alpha，只需算一次！）
         self.mixing_overlap_data = self._precompute_mixing_overlaps()
@@ -142,6 +143,64 @@ class AdiabaticPhaseDiagram:
         self._hansen_cache[cache_key] = coefficient
         return coefficient
 
+    def _finite_overlap_terms(self, alpha_val, q_ratio, m_omega, x_star):
+        x_star = np.clip(
+            np.asarray(x_star, dtype=float),
+            self.mixing_overlap_data["x_grid"][0],
+            self.mixing_overlap_data["x_grid"][-1],
+        )
+        i_in = np.interp(x_star, self.mixing_overlap_data["x_grid"], self.mixing_overlap_data["inner_cumulative"])
+        i_out = np.interp(x_star, self.mixing_overlap_data["x_grid"], self.mixing_overlap_data["outer_cumulative"])
+
+        term_inner = q_ratio * m_omega * i_in / (alpha_val**3 * (1.0 + q_ratio))
+        term_outer = (
+            alpha_val**7
+            * q_ratio
+            * (1.0 + q_ratio) ** (2.0 / 3.0)
+            * i_out
+            / max(m_omega, 1.0e-30) ** (7.0 / 3.0)
+        )
+        return term_inner + term_outer
+
+    def _finite_separation_fourier_coefficient(
+        self,
+        alpha_val,
+        q_ratio,
+        m_omega,
+        semi_major_axis,
+        r_c_local,
+        eccentricity,
+        harmonic,
+    ):
+        """Finite-separation eccentric Fourier coefficient matching highfre_shared."""
+        eccentricity = float(np.clip(eccentricity, 0.0, 0.999))
+        harmonic = int(harmonic)
+        cache_key = (
+            round(float(alpha_val), 12),
+            round(float(q_ratio), 12),
+            round(float(m_omega), 14),
+            round(float(semi_major_axis / max(r_c_local, 1.0e-300)), 12),
+            round(eccentricity, 12),
+            harmonic,
+        )
+        if cache_key in self._fourier_cache:
+            return self._fourier_cache[cache_key]
+
+        m_star = abs(self.final_state[2] - self.initial_state[2])
+        mean_anomaly = np.linspace(0.0, 2.0 * np.pi, 4096, endpoint=False)
+        eccentric_anomaly = self._solve_kepler(mean_anomaly, eccentricity)
+        radial_ratio = 1.0 - eccentricity * np.cos(eccentric_anomaly)
+        cos_true = (np.cos(eccentric_anomaly) - eccentricity) / radial_ratio
+        sin_true = np.sqrt(max(1.0e-14, 1.0 - eccentricity**2)) * np.sin(eccentric_anomaly) / radial_ratio
+        true_anomaly = np.arctan2(sin_true, cos_true)
+
+        x_star = (semi_major_axis / r_c_local) * radial_ratio
+        finite_overlap = self._finite_overlap_terms(alpha_val, q_ratio, m_omega, x_star)
+        base = finite_overlap * np.exp(-1j * m_star * true_anomaly)
+        coefficient = np.mean(np.exp(1j * harmonic * mean_anomaly) * base)
+        self._fourier_cache[cache_key] = coefficient
+        return coefficient
+
     def _eccentric_sweep_factor(self, eccentricity):
         eccentricity = float(np.clip(eccentricity, 0.0, 0.999))
         one_minus_e2 = max(1.0e-12, 1.0 - eccentricity * eccentricity)
@@ -175,29 +234,18 @@ class AdiabaticPhaseDiagram:
         semi_major_axis = (self.G * (primary_mass_kg + companion_mass_kg) / omega_orb_res**2) ** (1.0 / 3.0)
 
         r_c_local = (self.G * primary_mass_kg / self.c**2) / alpha_val**2
-        x_star = np.clip(
-            semi_major_axis / r_c_local,
-            self.mixing_overlap_data["x_grid"][0],
-            self.mixing_overlap_data["x_grid"][-1],
-        )
-
-        i_in = np.interp(x_star, self.mixing_overlap_data["x_grid"], self.mixing_overlap_data["inner_cumulative"])
-        i_out = np.interp(x_star, self.mixing_overlap_data["x_grid"], self.mixing_overlap_data["outer_cumulative"])
         i_a = self.mixing_overlap_data["angular_overlap"]
-
         m_omega = self.G * primary_mass_kg * omega_orb_res / self.c**3
-        term_inner = q_ratio * m_omega * i_in / (alpha_val**3 * (1.0 + q_ratio))
-        term_outer = (
-            alpha_val**7
-            * q_ratio
-            * (1.0 + q_ratio) ** (2.0 / 3.0)
-            * i_out
-            / max(m_omega, 1.0e-30) ** (7.0 / 3.0)
+        coefficient = self._finite_separation_fourier_coefficient(
+            alpha_val,
+            q_ratio,
+            m_omega,
+            semi_major_axis,
+            r_c_local,
+            eccentricity,
+            self.resonance_harmonic,
         )
-
-        eta_circular_rad_s = (3.0 * np.pi / 10.0) * i_a * abs(term_inner + term_outer) * omega_orb_res
-        hansen_abs = abs(self._hansen_coefficient(eccentricity, self.resonance_harmonic))
-        eta_rad_s = eta_circular_rad_s * hansen_abs
+        eta_rad_s = abs((3.0 * np.pi / 10.0) * i_a * coefficient * omega_orb_res)
 
         orbital_sweep_rate = (
             omega_orb_res**2
@@ -212,13 +260,14 @@ class AdiabaticPhaseDiagram:
         z_value = eta_rad_s**2 / max(resonance_sweep_rate, 1.0e-60)
         return {
             "z": z_value,
-            "eta_circular_rad_s": eta_circular_rad_s,
-            "hansen_abs": hansen_abs,
+            "eta_circular_rad_s": eta_rad_s,
+            "hansen_abs": abs(self._hansen_coefficient(eccentricity, self.resonance_harmonic)),
             "eta_rad_s": eta_rad_s,
             "circular_sweep_rate": circular_resonance_sweep_rate,
             "eccentric_sweep_factor": eccentric_sweep_factor,
             "resonance_sweep_rate": resonance_sweep_rate,
-            "x_star": x_star,
+            "x_star": semi_major_axis / r_c_local,
+            "eta_model": "finite_separation_fourier",
         }
 
     def compute_z_parameter(self, alpha_val, q_ratio, M_bh_solar=1.0, eccentricity=None):
@@ -277,7 +326,7 @@ def plot_adiabatic_phase_diagram():
         eccentricity=eccentricity_ref,
     )
     
-    # 构建高精度网格
+    # Build the displayed parameter grid.
     alpha_grid = np.linspace(0.18, 0.35, 150)
     q_grid = np.logspace(-4, -0.5, 150)
     A, Q = np.meshgrid(alpha_grid, q_grid)
@@ -359,7 +408,7 @@ def plot_adiabatic_phase_diagram():
         color="white",
     )
     
-    # 增加细网格线提升学术感
+    # Add a light grid for readability.
     ax.grid(True, which="both", ls="--", alpha=0.2)
     
     plt.tight_layout()

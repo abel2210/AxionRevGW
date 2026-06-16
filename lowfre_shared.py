@@ -158,6 +158,9 @@ def build_paper_inspired_lowfreq_profile():
         "resonance_harmonic": 4,
         "max_harmonic": 8,
         "multi_harmonic_drive": False,
+        # In single-harmonic RWA mode, harmonics_to_keep is used only for
+        # scanning/reporting candidate crossings.  The cloud dynamics and
+        # backreaction keep resonance_harmonic alone.
         "harmonics_to_keep": 8,
         "binary_harmonics": 12,
         "transition_frequency_hz": None,
@@ -754,6 +757,10 @@ class EccentricResonantTidalGA:
         )
 
     def _peters_rhs(self, a, e):
+        a_floor = max(float(getattr(self, "r_g", 0.0)), 1.0e-30)
+        a = float(a)
+        if not np.isfinite(a) or a <= a_floor:
+            a = a_floor
         e = np.clip(e, 0.0, 0.999)
         one_minus_e2 = max(1.0e-12, 1.0 - e * e)
         prefactor = self.G**3 * self.M_tot * self.M * self.M_star / self.c**5
@@ -863,6 +870,9 @@ class EccentricResonantTidalGA:
             reduced_mass = self.M * self.M_star / self.M_tot
             one_minus_e2 = max(1.0e-12, 1.0 - e * e)
             l_orb = reduced_mass * np.sqrt(self.G * self.M_tot * a * one_minus_e2)
+            # Use the high-minus-low cloud reservoir for conservation.  For a
+            # downward crossing the final-level rate is positive but
+            # high_state_rate is negative, so the orbit gains energy.
             energy_coeff = (a * self.delta_E_high_low_backreaction) / max(self.G * self.M * self.M_star, 1.0e-60)
             angular_coeff = self.backreaction_macro_scale * self.delta_m_high_low / max(l_orb, 1.0e-60)
             dadt -= (2.0 * a * energy_coeff) * high_state_rate
@@ -1143,6 +1153,9 @@ class EccentricResonantTidalGA:
                     base = radial_ratio ** (-self.radial_power) * np.exp(
                         -1j * self.hansen_tidal_m * true_anomaly
                     )
+                    # Coefficients of (a/R)^(l+1) exp(-i m f) =
+                    # sum_n X_n(e) exp(-i n M).  For m=0 this is the radial
+                    # Hansen comb used by the Delta m = 0 Bohr crossing.
                     coeffs = phase_matrix @ base / mean_anomaly.size
 
                     real_table[:, idx] = coeffs.real
@@ -1226,6 +1239,11 @@ class EccentricResonantTidalGA:
             np.asarray(eccentricity, dtype=float),
         )
         hansen = self._interp_hansen(eccentricity)
+        # The far-field tidal matrix element is anchored once by the analytic
+        # A.6 expression at a_init.  For the low-frequency transitions used
+        # here, the remaining semimajor-axis dependence is the same
+        # a^[-(l_*+1)] power law, while eccentricity only changes the Hansen
+        # coefficient of each orbital harmonic.
         scale = (self.a_init / semi_major_axis) ** self.radial_power
         if scale.ndim == 0:
             return self.eta_ref * float(scale) * hansen
@@ -1751,6 +1769,9 @@ class EccentricResonantTidalGA:
         return np.sqrt(np.maximum(power_coeff, 0.0)) / harmonic
 
     def _cloud_amplitude(self):
+        # geom_factor is the fiducial projected transition-quadrupole
+        # coefficient F used with the 4G prefactor. Inclination and
+        # source-angle averages are not applied to this time-domain trace.
         prefactor = (4.0 * self.G) / (self.c**4 * self.d_L)
         quadrupole_scale = self.Mc_max * self.r_c**2
         return prefactor * self.transition_omega**2 * quadrupole_scale * self.geom_factor
@@ -2903,6 +2924,10 @@ class EccentricResonantTidalGA:
         denom = np.sqrt(max(norm1 * norm2, 1.0e-60))
         faithfulness = float(np.clip(np.abs(best_corr) / denom, 0.0, 1.0))
         mismatch = float(np.clip(1.0 - faithfulness, 0.0, 1.0))
+        # The dashed reference curves in the Letter use the axion-only
+        # perturbation SNR, not the much larger full binary foreground SNR.
+        # This is a conservative fixed-baseline reference for the axion-induced
+        # waveform departure.
         snr = self._detector_snr_prefactor(detector) * float(np.sqrt(max(axion_norm, 0.0)))
         distinguishability_threshold = self.mismatch_threshold_d / max(2.0 * snr**2, 1.0e-60)
 
@@ -2991,6 +3016,8 @@ class EccentricResonantTidalGA:
         denom = np.sqrt(max(norm1 * norm2, 1.0e-60))
         faithfulness = float(np.clip(np.abs(inner) / denom, 0.0, 1.0))
         mismatch = float(np.clip(1.0 - faithfulness, 0.0, 1.0))
+        # Same convention as compute_detector_match_pair: use the axion-only
+        # perturbation SNR for the conservative reference threshold.
         snr = self._detector_snr_prefactor(detector) * float(np.sqrt(max(axion_norm, 0.0)))
         distinguishability_threshold = self.mismatch_threshold_d / max(2.0 * snr**2, 1.0e-60)
         residual_density = 4.0 * np.abs(h1_band - aligned_h2) ** 2 / psd_band
@@ -3224,7 +3251,12 @@ class EccentricResonantTidalGA:
     def _detector_snr_prefactor(self, detector):
         detector_name = str(detector).upper()
         if detector_name == "DECIGO":
+            # Transition-radiation DECIGO convention: four-unit network response
+            # applied to the fiducial projected strain.  This replaces, rather
+            # than multiplies, the source-angle average used for generic detectors.
             return float(np.sqrt(1024.0 * np.pi * DECIGO_UNIT_COUNT / 15.0))
+        # Other detectors use the transition source-angle factor only at the
+        # SNR/background layer, not in the time-domain waveform itself.
         return float(np.sqrt(max(self.transition_geometry.source_angle_average_factor, 0.0)))
 
     def _transition_strain_scale_diagnostics(self):
@@ -3808,12 +3840,12 @@ class EccentricResonantTidalGA:
                     f"({final_series.get('method', 'unknown')}); {final_series.get('exact_error', 'no details')}"
                 )
             if final_series is not None:
-                final_rho = float(np.asarray(final_series.get("snr", [np.nan]), dtype=float)[-1])
+                final_rho_a = float(np.asarray(final_series.get("snr", [np.nan]), dtype=float)[-1])
                 print(
-                    f"  final mismatch-series d/(2rho^2) at "
+                    f"  final mismatch-series N/(2rho_a^2) at "
                     f"T_eff={final_series.get('effective_observation_years', final_series['observation_years'])[-1]:.4f} yr: "
                     f"{final_series['distinguishability_threshold'][-1]:.3e}"
-                    f" (rho_mismatch={final_rho:.3e})"
+                    f" (rho_a={final_rho_a:.3e})"
                 )
                 if final_series.get("monotone_envelope_applied", False):
                     print(
@@ -4148,7 +4180,7 @@ if __name__ == "__main__":
     # - 150 Msun 量级黑洞
     # lowfre211 default run:
     # - M_bh = 150 Msun, M_star = 0.1 Msun
-    # - hyperfine transition |21-1> -> |211| with multi-harmonic driving
+    # - selected n=4 RWA cloud dynamics, with n=1..8 scanned for diagnostics
     simulator = EccentricResonantTidalGA(
         M_bh=1500.0,
         M_star=0.5,
@@ -4190,7 +4222,8 @@ if __name__ == "__main__":
     )
     print(
         f"Using preset {LOWFREQ_TRANSITION_PRESET}: "
-        f"{lowfreq_transition_preset['description']} with multi-harmonic cloud driving."
+        f"{lowfreq_transition_preset['description']} with "
+        f"{'multi-harmonic' if lowfreq_multi_harmonic_drive else 'selected single-harmonic'} cloud driving."
     )
     print(
         "Run mode: full numerical; "
@@ -4198,7 +4231,8 @@ if __name__ == "__main__":
         f"target_resonance_delay={lowfreq_target_resonance_delay_obs_days:.1f} obs days, "
         f"duration_yr={lowfreq_duration_yr:.2f}, "
         f"transition=|{''.join(map(str, lowfreq_initial_state))}> -> |{''.join(map(str, lowfreq_final_state))}>, "
-        f"harmonics_to_keep={lowfreq_harmonics_to_keep}, "
+        f"event_harmonics_scanned=1..{lowfreq_harmonics_to_keep}, "
+        f"active_cloud_harmonic={'nearest-' + str(lowfreq_harmonics_to_keep) if lowfreq_multi_harmonic_drive else 'n=' + str(simulator.resonance_harmonic)}, "
         f"orbital_backreaction_mode={lowfreq_orbital_backreaction_mode}, "
         f"cloud_evolution_mode={lowfreq_cloud_evolution_mode}, "
         f"cloud_initial_state={lowfreq_cloud_initial_state}"

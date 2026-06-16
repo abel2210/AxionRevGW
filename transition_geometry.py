@@ -1,5 +1,15 @@
 from __future__ import annotations
 
+"""Transition quadrupole geometry used by the waveform pipeline.
+
+The key exported quantity is ``waveform_geom_factor``.  It is the coefficient
+F that is paired with the universal strain prefactor
+4 G M_c r_c^2 omega^2 / (c^4 d_L) in the time-domain waveform.  It is not a
+source-angle average.  Source-angle averages are stored separately in
+``source_angle_average_factor`` and are applied only in SNR/background
+normalizations.
+"""
+
 from dataclasses import dataclass
 import math
 from typing import Callable
@@ -61,7 +71,8 @@ def _quadrupole_matrix(
 ) -> np.ndarray:
     _, l_i, m_i = initial_state
     _, l_f, m_f = final_state
-    theta = np.linspace(0.0, np.pi, int(theta_samples))
+    mu, mu_weights = np.polynomial.legendre.leggauss(int(theta_samples))
+    theta = np.arccos(mu)
     phi = np.linspace(0.0, 2.0 * np.pi, int(phi_samples), endpoint=False)
     theta_grid, phi_grid = np.meshgrid(theta, phi, indexing="ij")
 
@@ -74,17 +85,16 @@ def _quadrupole_matrix(
     )
 
     matrix = np.zeros((3, 3), dtype=np.complex128)
+    dphi = 2.0 * np.pi / int(phi_samples)
     for i in range(3):
         for j in range(3):
             angular_integrand = (
-                y_i
-                * np.conj(y_f)
+                np.conj(y_i)
+                * y_f
                 * n_components[i]
                 * n_components[j]
-                * np.sin(theta_grid)
             )
-            phi_integral = np.trapezoid(angular_integrand, phi, axis=1)
-            matrix[i, j] = radial_overlap * np.trapezoid(phi_integral, theta)
+            matrix[i, j] = radial_overlap * np.sum(angular_integrand * mu_weights[:, None]) * dphi
     return matrix
 
 
@@ -134,15 +144,24 @@ def compute_transition_geometry(
     i_zz = quadrupole_matrix[2, 2]
     i_xy = quadrupole_matrix[0, 1]
 
+    # The waveform factor below is the effective single-projection coefficient
+    # used by the numerical time series.  It is deliberately separate from the
+    # source-angle average used in detector diagnostics.
     if delta_m == 0:
         pattern = "axisymmetric_delta_m0"
         i_perp = 0.5 * (i_xx + i_yy)
-        waveform_geom_factor = float(abs(i_zz - i_perp) / 4.0)
+        # Paired with the 4G prefactor, this gives the fiducial edge-on
+        # axisymmetric projection (sin^2 iota = 1).  The transition density
+        # contains c_g^* c_e I_ij + c.c.; with h_A = G e_A^{ij} ddot Q_ij
+        # this requires F = |I_zz - I_perp| / 2 for the 4G convention.
+        waveform_geom_factor = float(abs(i_zz - i_perp) / 2.0)
         source_angle_average_factor = 8.0 / 15.0
     elif abs(delta_m) == 2:
         pattern = "quadrupolar_delta_m2"
         spin2_plus = (i_xx - i_yy) + 2.0j * i_xy
         spin2_minus = (i_xx - i_yy) - 2.0j * i_xy
+        # This is the spin-2 transition coefficient used before applying the
+        # usual plus/cross inclination factors.
         waveform_geom_factor = float(max(abs(spin2_plus), abs(spin2_minus)) / 4.0)
         source_angle_average_factor = 4.0 / 5.0
     else:

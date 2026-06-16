@@ -371,10 +371,10 @@ def _write_reports(points, run_results, min_line_freq_mhz):
         f"- Selection rule: `{points[0].selection if points else 'n/a'}`",
         f"- Scan SNR floor: `{points[0].scan_threshold if points else np.nan:g}`",
         f"- Transition-line floor: `>= {min_line_freq_mhz:g} mHz`.",
-        "- The scan SNR is the extrapolated axion-line SNR from `lowfre_decigo_snr_scan.py`.",
+        "- The scan SNR is the extrapolated transition-strain SNR from `lowfre_decigo_snr_scan.py`.",
         "- The mismatch comparison below is recomputed by the full `lowfre_shared` pipeline at the selected alpha and distance.",
         "",
-        "| preset | alpha | dL [kpc] | line f [mHz] | scan SNR | final M | final rho | N/(2rho^2) | pass? |",
+        "| preset | alpha | dL [kpc] | line f [mHz] | scan SNR | final M | final rho_a | N/(2rho_a^2) | pass? |",
         "|---|---:|---:|---:|---:|---:|---:|---:|:---:|",
     ]
     for point in points:
@@ -399,8 +399,8 @@ def _write_reports(points, run_results, min_line_freq_mhz):
             "## Notes",
             "",
             "- `final M` is the last point of the saved mismatch time series.",
-            "- `final rho` is the SNR quantity used internally by the mismatch threshold calculation.",
-            "- `N/(2rho^2)` uses the configured `mismatch_threshold_d` value.",
+            "- `final rho_a` is the axion-only perturbation SNR used internally by the conservative mismatch threshold calculation.",
+            "- `N/(2rho_a^2)` uses the configured `mismatch_threshold_d` value.",
             f"- CSV report: `{REPORT_CSV}`",
         ]
     )

@@ -134,7 +134,7 @@ class EccentricResonantTidalGA:
 
     def __init__(
         self,
-        # --- 婧愬弬鏁帮細榛戞礊璐ㄩ噺銆佷即鏄熻川閲忋€佷簯鍙傛暟 ---
+        # --- Source parameters: black-hole mass, companion mass, and cloud parameters ---
         M_bh=0.001,
         M_star=0.0001,
         alpha=DEFAULT_HIGHFREQ_ALPHA,
@@ -156,6 +156,7 @@ class EccentricResonantTidalGA:
         bh_spin=DEFAULT_HIGHFREQ_BH_SPIN,
         orbital_start_ratio=0.95,
         use_formula_eta=True,
+        eta_model="finite_separation_fourier",
         overlap_grid_points=4096,
         overlap_max_x=5.0e3,
         tidal_l=2,
@@ -209,6 +210,14 @@ class EccentricResonantTidalGA:
         self.bh_spin = float(bh_spin)
         self.orbital_start_ratio = float(orbital_start_ratio)
         self.use_formula_eta = bool(use_formula_eta)
+        self.eta_model = str(eta_model or "finite_separation_fourier").lower()
+        allowed_eta_models = {
+            "finite_separation_fourier",
+            "semimajor_finite_overlap_hansen",
+            "powerlaw_hansen",
+        }
+        if self.eta_model not in allowed_eta_models:
+            raise ValueError(f"eta_model must be one of {sorted(allowed_eta_models)}.")
         self.overlap_grid_points = int(overlap_grid_points)
         self.overlap_max_x = float(overlap_max_x)
         self.transition_solver_data = self._compute_transition_quantities()
@@ -249,6 +258,11 @@ class EccentricResonantTidalGA:
 
         self.tidal_l = int(tidal_l)
         self.tidal_m = int(tidal_m)
+        # The harmonic comb is stored for positive orbital overtones n=1..N.
+        # For negative-m tidal components the positive-frequency coefficient is
+        # the conjugate of the +|m| component.  Use |m| for the Hansen magnitude;
+        # the signed transition Delta m is kept separately for angular-momentum
+        # backreaction.
         self.hansen_tidal_m = abs(self.tidal_m)
         self.radial_power = self.tidal_l + 1
 
@@ -284,6 +298,8 @@ class EccentricResonantTidalGA:
         self._hansen_e_grid = None
         self._hansen_real = None
         self._hansen_imag = None
+        self._fourier_mean_anomaly = None
+        self._fourier_phase_matrix = None
 
         self.transition_geometry = self._compute_transition_geometry()
         if self.geom_factor is None:
@@ -304,6 +320,10 @@ class EccentricResonantTidalGA:
         self.eta_ref = 2.0 * np.pi * self.eta_ref_hz
 
     def _peters_rhs(self, a, e):
+        a_floor = max(float(getattr(self, "r_g", 0.0)), 1.0e-30)
+        a = float(a)
+        if not np.isfinite(a) or a <= a_floor:
+            a = a_floor
         e = np.clip(e, 0.0, 0.999)
         one_minus_e2 = max(1.0e-12, 1.0 - e * e)
         prefactor = self.G**3 * self.M_tot * self.M * self.M_star / self.c**5
@@ -391,6 +411,9 @@ class EccentricResonantTidalGA:
             reduced_mass = self.M * self.M_star / self.M_tot
             one_minus_e2 = max(1.0e-12, 1.0 - e * e)
             l_orb = reduced_mass * np.sqrt(self.G * self.M_tot * a * one_minus_e2)
+            # Orbit loses the high-minus-low cloud energy and angular momentum
+            # when the high-level population grows; downward transitions have
+            # high_state_rate < 0 and therefore feed energy back to the orbit.
             energy_coeff = (a * self.delta_E_high_low_backreaction) / max(self.G * self.M * self.M_star, 1.0e-60)
             angular_coeff = self.backreaction_macro_scale * self.delta_m_high_low / max(l_orb, 1.0e-60)
             dadt -= (2.0 * a * energy_coeff) * high_state_rate
@@ -400,7 +423,7 @@ class EccentricResonantTidalGA:
         return [dadt, dedt, omega_val, d_cg.real, d_cg.imag, d_ce.real, d_ce.imag]
 
     def _resolve_transition_states(self):
-        # 榛樿鎬侀€夋嫨鍜屽弬鏁版眰瑙ｅ櫒/璁烘枃璁ㄨ淇濇寔涓€鑷达細
+        # Default states are kept consistent with the parameter solver and paper text:
         # fine: |322> -> |300>, hyperfine: |211> -> |21-1>
         if self.initial_state is not None and self.final_state is not None:
             return tuple(self.initial_state), tuple(self.final_state)
@@ -565,7 +588,7 @@ class EccentricResonantTidalGA:
         matrix = np.zeros((3, 3), dtype=np.complex128)
         for i in range(3):
             for j in range(3):
-                angular_integrand = y_i * np.conj(y_f) * n_components[i] * n_components[j] * np.sin(theta_grid)
+                angular_integrand = np.conj(y_i) * y_f * n_components[i] * n_components[j] * np.sin(theta_grid)
                 phi_integral = np.trapezoid(angular_integrand, phi, axis=1)
                 matrix[i, j] = radial_integral * np.trapezoid(phi_integral, theta)
         return matrix
@@ -609,7 +632,8 @@ class EccentricResonantTidalGA:
         return abs(full_integral)
 
     def _precompute_mixing_overlaps(self):
-        # 棰勮绠楄鏂?A.3-A.5 涓殑寰勫悜/瑙掑悜閲嶅彔锛?        # 鍚庣画 eta(A.6) 鍙渶瑕侀殢杞ㄩ亾鍗婂緞鍋氭彃鍊硷紝閬垮厤閲嶅绉垎
+        # Precompute the radial/angular overlaps entering the eta estimate.
+        # Later calls only interpolate with the instantaneous orbital radius.
         initial_state = self.transition_solver_data["initial_state"]
         final_state = self.transition_solver_data["final_state"]
 
@@ -660,17 +684,71 @@ class EccentricResonantTidalGA:
         eta_over_omega = (3.0 * np.pi / 10.0) * i_a * abs(term_inner + term_outer)
         return eta_over_omega * orbital_omega / (2.0 * np.pi)
 
+    def _finite_overlap_terms(self, semi_major_axis, x_star):
+        q_mass = self.M_star / self.M
+        orbital_omega = np.sqrt(self.G * self.M_tot / semi_major_axis**3)
+        m_omega = self.G * self.M * orbital_omega / self.c**3
+        x_star = np.clip(
+            np.asarray(x_star, dtype=float),
+            self.mixing_overlap_data["x_grid"][0],
+            self.mixing_overlap_data["x_grid"][-1],
+        )
+
+        i_in = np.interp(
+            x_star,
+            self.mixing_overlap_data["x_grid"],
+            self.mixing_overlap_data["inner_cumulative"],
+        )
+        i_out = np.interp(
+            x_star,
+            self.mixing_overlap_data["x_grid"],
+            self.mixing_overlap_data["outer_cumulative"],
+        )
+
+        term_inner = q_mass * m_omega * i_in / (self.alpha**3 * (1.0 + q_mass))
+        term_outer = (
+            self.alpha**7
+            * q_mass
+            * (1.0 + q_mass) ** (2.0 / 3.0)
+            * i_out
+            / max(m_omega, 1.0e-30) ** (7.0 / 3.0)
+        )
+        return term_inner + term_outer
+
+    def _ensure_orbital_fourier_grid(self):
+        if self._fourier_mean_anomaly is not None and self._fourier_phase_matrix is not None:
+            return
+        mean_anomaly = np.linspace(0.0, 2.0 * np.pi, self.hansen_M_samples, endpoint=False)
+        self._fourier_mean_anomaly = mean_anomaly
+        self._fourier_phase_matrix = np.exp(1j * np.outer(self.harmonics, mean_anomaly))
+
+    def _finite_separation_fourier_coeffs(self, semi_major_axis, eccentricity):
+        self._ensure_orbital_fourier_grid()
+        mean_anomaly = self._fourier_mean_anomaly
+        eccentricity = float(np.clip(eccentricity, 0.0, 0.999))
+        eccentric_anomaly = solve_kepler(mean_anomaly, eccentricity)
+        radial_ratio = 1.0 - eccentricity * np.cos(eccentric_anomaly)
+        cos_true = (np.cos(eccentric_anomaly) - eccentricity) / radial_ratio
+        sin_true = np.sqrt(max(1.0e-14, 1.0 - eccentricity**2)) * np.sin(eccentric_anomaly) / radial_ratio
+        true_anomaly = np.arctan2(sin_true, cos_true)
+
+        x_star = (float(semi_major_axis) / self.r_c) * radial_ratio
+        finite_overlap = self._finite_overlap_terms(float(semi_major_axis), x_star)
+        base = finite_overlap * np.exp(-1j * self.hansen_tidal_m * true_anomaly)
+        return self._fourier_phase_matrix @ base / mean_anomaly.size
+
     def _ensure_hansen_table(self):
         if self._hansen_e_grid is not None:
             return
 
+        self._ensure_orbital_fourier_grid()
         e_max = min(0.95, max(0.05, self.e_init))
         self._hansen_e_grid = np.linspace(0.0, e_max, self.hansen_e_samples)
         self._hansen_real = np.zeros((len(self.harmonics), self.hansen_e_samples))
         self._hansen_imag = np.zeros((len(self.harmonics), self.hansen_e_samples))
 
-        mean_anomaly = np.linspace(0.0, 2.0 * np.pi, self.hansen_M_samples, endpoint=False)
-        phase_matrix = np.exp(1j * np.outer(self.harmonics, mean_anomaly))
+        mean_anomaly = self._fourier_mean_anomaly
+        phase_matrix = self._fourier_phase_matrix
 
         for idx, ecc in enumerate(self._hansen_e_grid):
             eccentric_anomaly = solve_kepler(mean_anomaly, ecc)
@@ -679,6 +757,8 @@ class EccentricResonantTidalGA:
             sin_true = np.sqrt(max(1.0e-14, 1.0 - ecc**2)) * np.sin(eccentric_anomaly) / radial_ratio
             true_anomaly = np.arctan2(sin_true, cos_true)
 
+            # Coefficients of (a/R)^(l+1) exp(-i m f) =
+            # sum_n X_n(e) exp(-i n M).  For m=0 this is the radial Hansen comb.
             base = radial_ratio ** (-self.radial_power) * np.exp(-1j * self.hansen_tidal_m * true_anomaly)
             coeffs = phase_matrix @ base / mean_anomaly.size
 
@@ -693,13 +773,27 @@ class EccentricResonantTidalGA:
         return real + 1j * imag
 
     def _eta_vector(self, semi_major_axis, eccentricity):
-        hansen = self._interp_hansen(eccentricity)
         if self._manual_eta_ref_hz:
+            hansen = self._interp_hansen(eccentricity)
             scale = (self.a_init / semi_major_axis) ** self.radial_power
             eta_base = self.eta_ref * scale
-        else:
+            return eta_base * hansen
+        if self.eta_model == "powerlaw_hansen":
+            hansen = self._interp_hansen(eccentricity)
+            scale = (self.a_init / semi_major_axis) ** self.radial_power
+            return self.eta_ref * scale * hansen
+        if self.eta_model == "semimajor_finite_overlap_hansen":
+            hansen = self._interp_hansen(eccentricity)
+            # This is a semimajor-axis anchored finite-separation overlap
+            # multiplied by eccentric Hansen harmonics.  It is not a full
+            # Fourier decomposition of the finite-separation kernel along an
+            # eccentric orbit.
             eta_base = 2.0 * np.pi * self._formula_eta_hz(semi_major_axis)
-        return eta_base * hansen
+            return eta_base * hansen
+        coeffs = self._finite_separation_fourier_coeffs(semi_major_axis, eccentricity)
+        orbital_omega = np.sqrt(self.G * self.M_tot / float(semi_major_axis) ** 3)
+        eta_over_omega = (3.0 * np.pi / 10.0) * self.mixing_overlap_data["angular_overlap"] * coeffs
+        return orbital_omega * eta_over_omega
 
     def _choose_transition_frequency(self, orbit):
         if self.transition_frequency_hz is not None:
@@ -910,6 +1004,8 @@ class EccentricResonantTidalGA:
         one_minus_e2 = max(1.0e-12, 1.0 - float(e) * float(e))
         energy_orbit = -self.G * self.M * self.M_star / (2.0 * float(a))
         angular_orbit = reduced_mass * np.sqrt(self.G * self.M_tot * float(a) * one_minus_e2)
+        # Same convention as the continuous RHS: a positive delta_high_population
+        # means the cloud stores the high-minus-low energy/angular momentum.
         energy_orbit -= self.delta_E_high_low_backreaction * float(delta_high_population)
         angular_orbit -= self.backreaction_macro_scale * self.delta_m_high_low * float(delta_high_population)
         if energy_orbit >= -1.0e-300:
@@ -1333,6 +1429,9 @@ class EccentricResonantTidalGA:
         return (4.0 * M_c_geom / self.d_L) * v_char**2
 
     def _cloud_amplitude(self):
+        # geom_factor is the fiducial projected transition-quadrupole
+        # coefficient F used with the 4G prefactor. Inclination and
+        # source-angle averages are not applied to this time-domain trace.
         prefactor = (4.0 * self.G) / (self.c**4 * self.d_L)
         quadrupole_scale = self.Mc_max * self.r_c**2
         return prefactor * self.transition_omega**2 * quadrupole_scale * self.geom_factor
@@ -1949,8 +2048,18 @@ class EccentricResonantTidalGA:
             f"module={self.module_stem}",
             f"component={component_label}",
             f"transition_family={self.transition_family}",
-            f"eta_model={'manual_powerlaw_hansen' if self._manual_eta_ref_hz else 'exact_formula_hansen'}",
+            f"eta_model={'manual_powerlaw_hansen' if self._manual_eta_ref_hz else self.eta_model}",
             f"eta_reference_hz={self.eta_ref_hz:.16e}",
+            f"cloud_evolution_mode={self.cloud_evolution_mode}",
+            f"resonance_harmonic={self.resonance_harmonic:d}",
+            f"max_harmonic={int(self.harmonics[-1]):d}",
+            f"multi_harmonic_drive={int(self.multi_harmonic_drive)}",
+            f"harmonics_to_keep={self.harmonics_to_keep:d}",
+            "active_harmonics="
+            + ",".join(str(int(n)) for n in self._select_active_harmonic_indices()[2]),
+            f"lz_window_widths={self.lz_window_widths:.16e}",
+            f"backreaction_gate_mode={self.backreaction_gate_mode}",
+            f"backreaction_gate_width_factor={self.backreaction_gate_width_factor:.16e}",
             f"alpha={self.alpha:.16e}",
             f"bh_spin={self.bh_spin:.16e}",
             f"cloud_mass_fraction={self.cloud_mass_fraction:.16e}",
@@ -1958,11 +2067,18 @@ class EccentricResonantTidalGA:
             f"luminosity_distance_m={self.d_L:.16e}",
             f"primary_mass_msun={self.M / self.M_sun:.16e}",
             f"secondary_mass_msun={self.M_star / self.M_sun:.16e}",
+            f"eccentricity_init={self.e_init:.16e}",
             f"transition_frequency_obs_hz={frequency_domain['f_transition_obs_hz']:.16e}",
             f"fft_nyquist_hz={frequency_domain['freq_hz'][-1]:.16e}",
             f"fft_dt_obs_s={frequency_domain['dt_obs']:.16e}",
+            f"fft_df_hz={frequency_domain['df_hz']:.16e}",
             f"fft_n_samples={len(frequency_domain['t_obs'])}",
             f"fft_n_fft={frequency_domain['n_fft']}",
+            "fft_window=kaiser",
+            "fft_window_beta=1.4000000000000000e+01",
+            "fft_mean_removed=1",
+            "fourier_convention=h_tilde_integral_h_exp_minus_2pi_i_f_t_dt",
+            "fft_amplitude_units=strain_seconds",
         ]
         optional_metadata_keys = (
             "spectrum_window_mode",

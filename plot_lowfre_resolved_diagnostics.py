@@ -12,8 +12,9 @@ from matplotlib.ticker import MaxNLocator
 
 BASE_DIR = Path(__file__).resolve().parent
 SNR_DATA_DIR = BASE_DIR / "snr_scan_data"
-PROBE_REPORT_CSV = BASE_DIR / "diagnostics" / "lowfre_mismatch_threshold_probe.csv"
-PROBE_MISMATCH_DATA_DIR = BASE_DIR / "diagnostics" / "lowfre_threshold_probe_mismatch_data"
+PROBE_DIR = BASE_DIR / "diagnostics" / "lowfre_mismatch_threshold_probe"
+PROBE_REPORT_CSV = PROBE_DIR / "lowfre_mismatch_threshold_probe.csv"
+PROBE_MISMATCH_DATA_DIR = PROBE_DIR / "mismatch_data"
 FIGURE_DIR = BASE_DIR / "figures"
 
 SNR_COLORBAR_MAX = 200.0
@@ -236,7 +237,7 @@ def plot_mismatch_panel(ax, show_ylabel: bool = False) -> None:
     ax.text(
         0.05,
         0.08,
-        r"dashed: $N/(2\rho^2)$",
+        r"dashed: $N/(2\rho_a^2)$",
         transform=ax.transAxes,
         fontsize=4.3,
         ha="left",
@@ -299,11 +300,24 @@ def main() -> None:
             colorbar.set_label("DECIGO transition SNR", fontsize=5.4, labelpad=1.2)
             colorbar.ax.tick_params(labelsize=4.8, length=2.0, pad=0.8)
 
+    def save_with_fallback(path: Path) -> Path:
+        candidates = [path]
+        candidates.extend(path.with_name(f"{path.stem}_updated{idx}{path.suffix}") for idx in range(1, 20))
+        last_error = None
+        for candidate in candidates:
+            try:
+                fig.savefig(candidate, dpi=300, bbox_inches="tight")
+                return candidate
+            except PermissionError as exc:
+                last_error = exc
+                continue
+        raise PermissionError(f"Could not write {path} or any fallback path.") from last_error
+
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)
     out = FIGURE_DIR / "lowfre_decigo_resolved_diagnostics.pdf"
-    fig.savefig(out, dpi=300, bbox_inches="tight")
+    saved_out = save_with_fallback(out)
+    print(f"Saved {saved_out}")
     plt.close(fig)
-    print(f"Saved {out}")
 
 
 if __name__ == "__main__":

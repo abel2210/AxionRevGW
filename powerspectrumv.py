@@ -28,7 +28,7 @@ FIGURE_DIR = BASE_DIR / "figures"
 EXPECTED_HIGHFREQ_ALPHA = 0.30
 EXPECTED_HIGHFREQ_BH_SPIN = 0.7
 EXPECTED_HIGHFREQ_CLOUD_MASS_FRACTION = 0.005
-EXPECTED_ETA_MODEL = "exact_formula_hansen"
+EXPECTED_ETA_MODEL = "finite_separation_fourier"
 PURE_PETERS_F_ORB_INIT_HZ = 5.112
 EXPECTED_SPECTRUM_WINDOW_MODE = "first_selected_orbits"
 EXPECTED_SPECTRUM_WINDOW_ORBITS = 160.0
@@ -262,21 +262,51 @@ def peters_export_needs_rebuild(path: Path) -> bool:
     if not path.exists():
         return True
     metadata = parse_metadata(path)
+    required_metadata = (
+        "sample_points",
+        "pad_factor",
+        "fft_nyquist_hz",
+        "fft_dt_obs_s",
+        "fft_df_hz",
+        "fft_n_samples",
+        "fft_n_fft",
+        "fft_window",
+        "fft_window_beta",
+        "fft_mean_removed",
+        "fourier_convention",
+        "fft_amplitude_units",
+        "frequency_frame",
+    )
+    if any(key not in metadata for key in required_metadata):
+        return True
     try:
         f_orb_init = float(metadata["orbital_frequency_init_hz"])
         window_orbits = float(metadata["window_orbits"])
         primary_mass_msun = float(metadata["primary_mass_msun"])
         secondary_mass_msun = float(metadata["secondary_mass_msun"])
         eccentricity_init = float(metadata["eccentricity_init"])
+        redshift = float(metadata["redshift"])
+        sample_points = int(metadata["sample_points"])
+        pad_factor = int(metadata["pad_factor"])
+        window_beta = float(metadata["fft_window_beta"])
     except (KeyError, ValueError):
         return True
     return not (
         metadata.get("template_model") == "peters"
+        and metadata.get("frequency_frame") == "observer"
+        and metadata.get("fft_window") == "kaiser"
+        and metadata.get("fft_mean_removed") == "1"
+        and metadata.get("fourier_convention") == "h_tilde_integral_h_exp_minus_2pi_i_f_t_dt"
+        and metadata.get("fft_amplitude_units") == "strain_seconds"
         and np.isclose(f_orb_init, PURE_PETERS_F_ORB_INIT_HZ)
         and np.isclose(window_orbits, PURE_PETERS_WINDOW_ORBITS)
         and np.isclose(primary_mass_msun, 1.0)
         and np.isclose(secondary_mass_msun, 0.01)
         and np.isclose(eccentricity_init, 0.65)
+        and np.isclose(redshift, 0.0)
+        and sample_points == 8192
+        and pad_factor == 4
+        and np.isclose(window_beta, 14.0)
     )
 
 
@@ -294,6 +324,25 @@ def export_needs_rebuild(target: ExportTarget) -> bool:
         return True
     if target.builder_name in {"highfre", "highfre644"}:
         if metadata.get("eta_model") != EXPECTED_ETA_MODEL:
+            return True
+        required_metadata = (
+            "cloud_evolution_mode",
+            "resonance_harmonic",
+            "max_harmonic",
+            "multi_harmonic_drive",
+            "harmonics_to_keep",
+            "active_harmonics",
+            "lz_window_widths",
+            "backreaction_gate_mode",
+            "backreaction_gate_width_factor",
+            "fft_df_hz",
+            "fft_window",
+            "fft_window_beta",
+            "fft_mean_removed",
+            "fourier_convention",
+            "fft_amplitude_units",
+        )
+        if any(key not in metadata for key in required_metadata):
             return True
         if "fft_nyquist_hz" not in metadata:
             return True
@@ -416,6 +465,12 @@ def sgwb_header_lines(label, metadata, config: SGWBRateConfig, nu_cut, mass_msun
     )
     lines = [
         f"label={label}",
+        f"source_module={metadata.get('module', 'unknown')}",
+        f"source_component={metadata.get('component', 'unknown')}",
+        f"source_transition_family={metadata.get('transition_family', 'none')}",
+        f"source_frequency_frame={metadata.get('frequency_frame', 'unknown')}",
+        f"source_redshift={float(metadata.get('redshift', '0.0')):.16e}",
+        f"source_luminosity_distance_m={float(metadata.get('luminosity_distance_m', 'nan')):.16e}",
         "rate_model=remnant_cloud_effective",
         f"r0_gpc3_yr={config.r0_gpc3_yr:.16e}",
         f"r_eff0_gpc3_yr={r_eff0:.16e}",
@@ -432,6 +487,13 @@ def sgwb_header_lines(label, metadata, config: SGWBRateConfig, nu_cut, mass_msun
         f"superradiant_spin_threshold={threshold:.16e}",
         f"nu_cut_hz={nu_cut:.16e}",
         f"characteristic_mass_msun={mass_msun:.16e}",
+        f"hubble_h0_si={H0:.16e}",
+        f"rho_c_energy_density_si={RHO_C:.16e}",
+        "omega_gw_formula=f_over_rho_c_H0_integral_R_eff_dE_dnu_over_1plusz_Ez",
+        "single_event_spectrum_frame=local_source_z0",
+        "energy_spectrum_prefactor=two_pi_squared_c_cubed_over_G",
+        f"source_angle_average_factor={angle_average_factor_from_metadata(metadata):.16e}",
+        "single_event_fourier_convention=h_tilde_integral_h_exp_minus_2pi_i_f_t_dt",
     ]
     if empty:
         lines.append("empty_source_spectrum=true")
@@ -443,13 +505,20 @@ def build_energy_spectrum(metadata, data):
     freq_obs_hz = np.asarray(data[:, 0], dtype=float)
     amplitude_obs = np.asarray(data[:, 1], dtype=float)
     redshift = float(metadata.get("redshift", "0.0"))
+    if metadata.get("frequency_frame") != "observer":
+        raise ValueError("Frequency export must use observer-frame frequencies.")
+    if not np.isclose(redshift, 0.0, atol=1.0e-14):
+        raise ValueError(
+            "SGWB energy-spectrum builder expects a local z=0 waveform export; "
+            "cosmological redshift is applied only in the population integral."
+        )
     distance_m = float(metadata["luminosity_distance_m"])
 
-    source_freq_hz = freq_obs_hz * (1.0 + redshift)
-    source_amplitude = amplitude_obs / (1.0 + redshift)
+    source_freq_hz = freq_obs_hz
+    source_amplitude = amplitude_obs
     angle_average_factor = angle_average_factor_from_metadata(metadata)
     dE_dnu = (
-        (np.pi**2 * C**3 / (2.0 * G))
+        (2.0 * np.pi**2 * C**3 / G)
         * distance_m**2
         * source_freq_hz**2
         * angle_average_factor

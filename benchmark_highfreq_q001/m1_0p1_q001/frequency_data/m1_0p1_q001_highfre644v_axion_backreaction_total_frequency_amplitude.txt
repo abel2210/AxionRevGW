@@ -1,7 +1,7 @@
 # module=m1_0p1_q001_highfre644v
 # component=axion_backreaction_total
 # transition_family=bohr
-# eta_model=exact_formula_hansen
+# eta_model=semimajor_finite_overlap_hansen
 # eta_reference_hz=5.1392268604796322e-03
 # alpha=2.9999999999999999e-01
 # bh_spin=6.9999999999999996e-01
