@@ -4,7 +4,7 @@ Code, numerical data, and figure assets supporting the paper
 
 **Finite Coherence in Gravitational Waves from Tidally Excited Axion Clouds**
 
-This repository contains the production scripts and derived data used to generate the figures and numerical checks reported in the manuscript and Supplemental Material. It is intended as a public technical companion to the paper under the APS data and code availability policy.
+This repository contains the production scripts and derived data used to generate the figures and numerical checks reported in the article and its Appendix. It is intended as the public technical companion to the paper.
 
 ## Repository Contents
 
@@ -38,7 +38,7 @@ This repository contains the production scripts and derived data used to generat
 - `plot_bohr_orbit_time_summary_concise.py`: compact Bohr event time-domain summary.
 - `bohr_lz_tools.py`, `probe_bohr_alpha_family.py`, `probe_bohr_visibility_sweep.py`: numerical support for the finite-coherence visibility figure.
 - `plot_bohr_domain_visibility_map.py`: parameter-domain and waveform-normalization map.
-- `plot_lowfre_resolved_diagnostics.py`: low-frequency SNR and mismatch diagnostic figure.
+- `plot_lowfre_resolved_diagnostics.py`: downward-transition SNR and fixed-parameter mismatch diagnostic figure.
 - `plot_sgwb_remnant_rate_band.py`: rate-normalized stochastic-background spectra.
 - `lowfre_decigo_snr_scan.py`: DECIGO SNR scans for low-frequency transitions.
 - `probe_lowfre_mismatch_from_snr_scan.py`: mismatch probe based on selected SNR scan points.
@@ -98,7 +98,7 @@ Some scripts can be computationally heavier because they integrate coupled orbit
 
 ## Regenerating Scan Data
 
-Low-frequency SNR scans:
+Low-frequency SNR scans for the two downward transitions initialized in populated superradiant levels:
 
 ```bash
 python lowfre_decigo_snr_scan.py
@@ -110,6 +110,10 @@ Mismatch probe from selected SNR scan points:
 python probe_lowfre_mismatch_from_snr_scan.py
 ```
 
+The default probe uses the common source point \(\alpha=0.30\), \(d_L=100\) kpc for
+`211v` and `322v`. Its CSV output records the resonance time, transition SNR,
+and cumulative fixed-parameter mismatch used in the resolved-source figure.
+
 High-frequency fixed-mass-ratio benchmarks:
 
 ```bash
@@ -119,3 +123,16 @@ python run_highfreq_q001_benchmarks.py
 ## Scope
 
 This repository contains code, numerical data, and figures only. Manuscript drafts, cover letters, presentation slides, internal notes, technical audit reports, and review-response documents are outside the public code package.
+
+The compact Bohr calculation is an event-local selected-crossing model. The
+parameter-domain figure is a fixed-eccentricity estimate validated over
+\(10^{-4}\leq q\leq10^{-2}\), rather than a population scan. For long
+observations, the resolved-source comparison retains only downward transitions
+that begin in populated superradiant levels; upward examples initialized in
+absorptive levels require an explicit replenishment history. The reported
+mismatch holds intrinsic source parameters fixed and is a waveform-deformation
+diagnostic, not a parameter-optimized detection forecast.
+
+The stochastic-background scripts are retained as an optional rate-normalized
+extension. Their effective event rate is an external population input rather
+than a prediction of the waveform model.

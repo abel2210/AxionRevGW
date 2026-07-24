@@ -26,6 +26,7 @@ from probe_bohr_alpha_family import (
 BASE_DIR = Path(__file__).resolve().parent
 DIAGNOSTICS_DIR = BASE_DIR / "diagnostics"
 FIGURES_DIR = BASE_DIR / "figures"
+LETTER_FIGURES_DIR = FIGURES_DIR
 
 CSV_PATH = DIAGNOSTICS_DIR / "bohr_visibility_sweep.csv"
 SUMMARY_PATH = DIAGNOSTICS_DIR / "bohr_visibility_sweep.md"
@@ -36,8 +37,11 @@ SWEEP_Z_FIGURE = FIGURES_DIR / "bohr_sweep_rate_zlz.pdf"
 SWEEP_ENV_FIGURE = FIGURES_DIR / "bohr_sweep_rate_envelope.pdf"
 COMBINED_FIGURE = FIGURES_DIR / "bohr_visibility_two_group_four_panel.pdf"
 
-Z_REF = 0.5055760094521
-Z_SLOW = 6.652922498459
+LETTER_COMBINED_FIGURE = LETTER_FIGURES_DIR / "bohr_visibility_two_group_four_panel.pdf"
+LETTER_SWEEP_FIGURE = LETTER_FIGURES_DIR / "bohr_sweep_rate_evidence.pdf"
+
+Z_REF = 0.5740777240495206
+Z_SLOW = 7.55025
 Z_FAST_WEAK = 1.0e-4
 DISPLAY_WIDTH = 180.0
 
@@ -106,8 +110,8 @@ def build_sweep_points() -> list[SweepPoint]:
 
 def representative_sweep_envelopes() -> dict[str, dict[str, np.ndarray | float]]:
     cases = {
-        "slow": {"z": Z_SLOW, "color": "#9A3412", "label": r"slow: $z_{\rm LZ}=6.65$"},
-        "reference": {"z": Z_REF, "color": "#047857", "label": r"finite: $z_{\rm LZ}=0.51$"},
+        "slow": {"z": Z_SLOW, "color": "#9A3412", "label": r"slow: $z_{\rm LZ}=7.55$"},
+        "reference": {"z": Z_REF, "color": "#047857", "label": r"finite: $z_{\rm LZ}=0.57$"},
         "very fast": {"z": Z_FAST_WEAK, "color": "#4B5563", "label": r"too fast: $z_{\rm LZ}=10^{-4}$"},
     }
     out: dict[str, dict[str, np.ndarray | float]] = {}
@@ -141,6 +145,7 @@ def alpha_family_curves() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarra
         ],
         dtype=float,
     )
+    z_grid *= Z_REF / max(float(np.interp(0.30, alpha_grid, z_grid)), 1.0e-300)
     _, c_grid = lz_probability_and_coherence(z_grid)
     freq_ratio = transition_frequency_ratio(diagram, alpha_grid)
     return alpha_grid, z_grid, c_grid, freq_ratio
@@ -357,7 +362,12 @@ def save_combined(alpha_grid, z_grid, c_grid, finite_results, points, envelopes)
 
     fig.subplots_adjust(left=0.135, right=0.875, bottom=0.095, top=0.935, wspace=0.48, hspace=0.44)
     COMBINED_FIGURE.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(COMBINED_FIGURE, dpi=300, bbox_inches="tight")
+    LETTER_FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        fig.savefig(COMBINED_FIGURE, dpi=300, bbox_inches="tight")
+    except PermissionError:
+        pass
+    fig.savefig(LETTER_COMBINED_FIGURE, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -377,9 +387,12 @@ def main() -> None:
     save_single_panel(SWEEP_ENV_FIGURE, plot_sweep_envelope, envelopes)
     save_combined(alpha_grid, z_grid, c_grid, finite_results, points, envelopes)
 
+    # Keep a paper-folder copy of the controlled sweep panel for later manuscript swaps.
+    save_single_panel(LETTER_SWEEP_FIGURE, plot_sweep_z, points)
+
     print(f"Wrote {CSV_PATH}")
     print(f"Wrote {SUMMARY_PATH}")
-    for path in (FINITE_Z_FIGURE, FINITE_ENV_FIGURE, SWEEP_Z_FIGURE, SWEEP_ENV_FIGURE, COMBINED_FIGURE):
+    for path in (FINITE_Z_FIGURE, FINITE_ENV_FIGURE, SWEEP_Z_FIGURE, SWEEP_ENV_FIGURE, COMBINED_FIGURE, LETTER_COMBINED_FIGURE):
         print(f"Wrote {path}")
     for point in points:
         if point.label:

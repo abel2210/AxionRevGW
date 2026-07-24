@@ -24,7 +24,7 @@ FIGURE_DIR = SCRIPT_DIR / "figures"
 DETECTOR = "DECIGO"
 REFERENCE_DISTANCE_KPC = 100.0
 DEFAULT_DETECTOR_CURVE_KIND = "characteristic_strain"
-SNR_MODEL_VERSION = "deterministic_strain_psd_v6_geometry_quadrature_decigo_n4_response"
+SNR_MODEL_VERSION = "deterministic_strain_psd_v12_nyquist_checked"
 DEFAULT_ALPHA_MIN = 0.10
 DEFAULT_ALPHA_MAX = 0.30
 SMALL_ALPHA_RECOMMENDED_MAX = 0.30
@@ -53,6 +53,25 @@ PRESETS = {
         "label": r"$|322\rangle\to|300\rangle$",
         "direction": "downward",
     },
+}
+
+REFERENCE_SOURCE_PARAMETERS = {
+    "211v": {
+        "M_bh": 150.0,
+        "mass_ratio": 1.0 / 150.0,
+    },
+    "322v": {
+        "M_bh": 150.0,
+        "mass_ratio": 1.0e-4,
+    },
+}
+COMMON_REFERENCE_SOURCE_PARAMETERS = {
+    "z": 0.0,
+    "e_init": 0.30,
+    "bh_spin": 0.99,
+    "cloud_mass_fraction": 0.05,
+    "resonance_harmonic": 4,
+    "parallel_workers": 1,
 }
 
 
@@ -90,19 +109,23 @@ def _scan_low_hz():
 
 
 def _extrapolate_detector_curve():
-    return _bool_env("LOWFREQ_SCAN_EXTRAPOLATE_DETECTOR_CURVE", True)
+    return _bool_env("LOWFREQ_SCAN_EXTRAPOLATE_DETECTOR_CURVE", False)
 
 
-def _row_matches_current_model(row):
+def _row_matches_current_model(row, preset_name=None):
+    source_tag_matches = True
+    if preset_name is not None:
+        source_tag_matches = row.get("source_parameter_tag") == _source_parameter_tag(preset_name)
     return (
         row.get("status") == "ok"
         and row.get("snr_model") == SNR_MODEL_VERSION
         and row.get("detector_curve_kind") == _detector_curve_kind()
+        and source_tag_matches
     )
 
 
 def _preset_list():
-    raw = os.environ.get("LOWFREQ_SCAN_PRESETS", "211,211v,322,322v")
+    raw = os.environ.get("LOWFREQ_SCAN_PRESETS", "211v,322v")
     presets = [item.strip().lower() for item in raw.split(",") if item.strip()]
     unknown = [item for item in presets if item not in PRESETS]
     if unknown:
@@ -133,9 +156,46 @@ def _distance_grid_kpc():
     return np.logspace(np.log10(d_min), np.log10(d_max), max(1, d_points))
 
 
-def _source_kwargs(alpha_value, preset_cls):
+def reference_source_parameters(preset_name):
+    if preset_name not in REFERENCE_SOURCE_PARAMETERS:
+        raise ValueError(
+            f"No reference source is defined for {preset_name!r}; "
+            "the revised resolved-source figure uses only 211v and 322v."
+        )
+    values = dict(COMMON_REFERENCE_SOURCE_PARAMETERS)
+    values.update(REFERENCE_SOURCE_PARAMETERS[preset_name])
+    prefix = f"LOWFREQ_SCAN_{preset_name.upper()}_"
+    values["M_bh"] = _float_env(prefix + "M_BH", values["M_bh"])
+    values["mass_ratio"] = _float_env(prefix + "MASS_RATIO", values["mass_ratio"])
+    values["e_init"] = _float_env(prefix + "E_INIT", values["e_init"])
+    values["bh_spin"] = _float_env(prefix + "BH_SPIN", values["bh_spin"])
+    values["cloud_mass_fraction"] = _float_env(
+        prefix + "CLOUD_MASS_FRACTION",
+        values["cloud_mass_fraction"],
+    )
+    values["resonance_harmonic"] = _int_env(
+        prefix + "RESONANCE_HARMONIC",
+        values["resonance_harmonic"],
+    )
+    values["z"] = _float_env(prefix + "REDSHIFT", values["z"])
+    values["M_star"] = values["M_bh"] * values.pop("mass_ratio")
+    return values
+
+
+def _source_parameter_tag(preset_name):
+    values = reference_source_parameters(preset_name)
+    return (
+        f"M1={values['M_bh']:.12g};M2={values['M_star']:.12g};"
+        f"e0={values['e_init']:.12g};spin={values['bh_spin']:.12g};"
+        f"McM={values['cloud_mass_fraction']:.12g};z={values['z']:.12g};"
+        f"nres={values['resonance_harmonic']};Tobs=0.4yr"
+    )
+
+
+def source_kwargs_for_preset(preset_name, alpha_value, preset_cls):
     profile = build_paper_inspired_lowfreq_profile()
     kwargs = dict(profile.source_kwargs)
+    kwargs.update(reference_source_parameters(preset_name))
     kwargs.update(
         {
             "alpha": float(alpha_value),
@@ -182,13 +242,23 @@ def _target_time_samples(simulator, duration_source_s):
     detector_low, detector_high = _scan_detector_band_hz(simulator)
     transition_obs_hz = simulator.transition_omega / (2.0 * np.pi * (1.0 + simulator.z))
     orbit_high_hz = simulator.binary_harmonics * simulator.f_orb_init / (1.0 + simulator.z)
-    requested_high_hz = _float_env("LOWFREQ_SCAN_MAX_ANALYSIS_HZ", 0.03)
+    requested_high_hz = _float_env("LOWFREQ_SCAN_MAX_ANALYSIS_HZ", 0.20)
     target_high_hz = min(detector_high, requested_high_hz, max(detector_low, 2.0 * transition_obs_hz, orbit_high_hz))
-    oversample = _float_env("LOWFREQ_SCAN_TIME_OVERSAMPLE", 2.5)
+    oversample = _float_env("LOWFREQ_SCAN_TIME_OVERSAMPLE", 1.25)
     minimum = _int_env("LOWFREQ_SCAN_TIME_SAMPLES_MIN", 4096)
-    cap = _int_env("LOWFREQ_SCAN_TIME_SAMPLES_CAP", 750000)
+    cap = _int_env("LOWFREQ_SCAN_TIME_SAMPLES_CAP", 4000000)
     requested = int(np.ceil(2.0 * oversample * duration_source_s * target_high_hz)) + 1
-    return int(max(minimum, min(cap, requested)))
+    sample_points = int(max(minimum, min(cap, requested)))
+    nyquist_hz = (sample_points - 1) / (2.0 * duration_source_s)
+    minimum_nyquist_hz = 1.20 * transition_obs_hz
+    if nyquist_hz < minimum_nyquist_hz:
+        required = int(np.ceil(2.0 * duration_source_s * minimum_nyquist_hz)) + 1
+        raise ValueError(
+            "LOWFREQ_SCAN_TIME_SAMPLES_CAP is too small for the transition waveform: "
+            f"Nyquist={nyquist_hz:.6g} Hz, required>={minimum_nyquist_hz:.6g} Hz "
+            f"(at least {required} samples)."
+        )
+    return sample_points
 
 
 def _scan_detector_band_hz(simulator):
@@ -266,7 +336,7 @@ def _axion_snr_from_window(simulator, waveform_window, pad_factor):
     }
 
 
-def _existing_rows(csv_path):
+def _existing_rows(csv_path, preset_name=None):
     rows = {}
     if not csv_path.exists():
         return rows
@@ -277,7 +347,7 @@ def _existing_rows(csv_path):
                 alpha = float(row["alpha"])
             except (KeyError, ValueError):
                 continue
-            if not _row_matches_current_model(row):
+            if not _row_matches_current_model(row, preset_name):
                 continue
             rows[round(alpha, 12)] = row
     return rows
@@ -288,6 +358,7 @@ def _write_rows(csv_path, rows):
         "preset",
         "alpha",
         "snr_model",
+        "source_parameter_tag",
         "detector_curve_kind",
         "scan_low_hz",
         "detector_curve_extrapolated",
@@ -313,7 +384,7 @@ def _write_rows(csv_path, rows):
 
 def _compute_alpha_point(preset_name, preset_cls, alpha_value, run_kwargs):
     start = time.time()
-    simulator = preset_cls(**_source_kwargs(alpha_value, preset_cls))
+    simulator = preset_cls(**source_kwargs_for_preset(preset_name, alpha_value, preset_cls))
     orbit, cloud = simulator.solve_coupled_system(
         duration_yr=run_kwargs["duration_yr"],
         secular_samples=run_kwargs["secular_samples"],
@@ -338,6 +409,7 @@ def _compute_alpha_point(preset_name, preset_cls, alpha_value, run_kwargs):
         "preset": preset_name,
         "alpha": f"{alpha_value:.12g}",
         "snr_model": SNR_MODEL_VERSION,
+        "source_parameter_tag": _source_parameter_tag(preset_name),
         "detector_curve_kind": _detector_curve_kind(),
         "scan_low_hz": f"{_scan_low_hz():.16e}",
         "detector_curve_extrapolated": str(_extrapolate_detector_curve()),
@@ -360,6 +432,7 @@ def _error_row(preset_name, alpha_value, exc):
         "preset": preset_name,
         "alpha": f"{float(alpha_value):.12g}",
         "snr_model": SNR_MODEL_VERSION,
+        "source_parameter_tag": _source_parameter_tag(preset_name),
         "detector_curve_kind": _detector_curve_kind(),
         "scan_low_hz": f"{_scan_low_hz():.16e}",
         "detector_curve_extrapolated": str(_extrapolate_detector_curve()),
@@ -388,7 +461,7 @@ def _compute_alpha_point_task(task):
 
 def _scan_preset(preset_name, alphas, run_kwargs, resume=True):
     csv_path = OUTPUT_DIR / f"{preset_name}_decigo_axion_snr_alpha_ref.csv"
-    rows = _existing_rows(csv_path) if resume else {}
+    rows = _existing_rows(csv_path, preset_name) if resume else {}
     pending = []
     for idx, alpha_value in enumerate(alphas, start=1):
         key = round(float(alpha_value), 12)
@@ -441,8 +514,8 @@ def _print_alpha_result(preset_name, alpha_value, row, done, total_pending):
         )
 
 
-def _load_snr_ref(csv_path, alphas):
-    rows = _existing_rows(csv_path)
+def _load_snr_ref(csv_path, preset_name, alphas):
+    rows = _existing_rows(csv_path, preset_name)
     snr_ref = np.full_like(alphas, np.nan, dtype=float)
     for idx, alpha_value in enumerate(alphas):
         row = rows.get(round(float(alpha_value), 12))
@@ -453,6 +526,7 @@ def _load_snr_ref(csv_path, alphas):
 
 
 def _write_grid_outputs(preset_name, alphas, distances_kpc, snr_grid):
+    source_parameters = reference_source_parameters(preset_name)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     npz_path = OUTPUT_DIR / f"{preset_name}_decigo_axion_snr_alpha_dl_grid.npz"
     np.savez(
@@ -465,6 +539,15 @@ def _write_grid_outputs(preset_name, alphas, distances_kpc, snr_grid):
         detector_curve_kind=_detector_curve_kind(),
         scan_low_hz=_scan_low_hz(),
         detector_curve_extrapolated=_extrapolate_detector_curve(),
+        source_parameter_tag=_source_parameter_tag(preset_name),
+        primary_mass_msun=source_parameters["M_bh"],
+        secondary_mass_msun=source_parameters["M_star"],
+        initial_eccentricity=source_parameters["e_init"],
+        black_hole_spin=source_parameters["bh_spin"],
+        cloud_mass_fraction=source_parameters["cloud_mass_fraction"],
+        resonance_harmonic=source_parameters["resonance_harmonic"],
+        redshift=source_parameters["z"],
+        observation_years=_run_kwargs()["duration_yr"],
     )
     csv_path = OUTPUT_DIR / f"{preset_name}_decigo_axion_snr_alpha_dl_grid.csv"
     header = "distance_kpc\\alpha," + ",".join(f"{alpha:.12g}" for alpha in alphas)
@@ -582,7 +665,7 @@ def main():
     grids = {}
     for preset_name in presets:
         csv_path = _scan_preset(preset_name, alphas, run_kwargs, resume=resume)
-        snr_ref = _load_snr_ref(csv_path, alphas)
+        snr_ref = _load_snr_ref(csv_path, preset_name, alphas)
         snr_grid = snr_ref[:, None] * (REFERENCE_DISTANCE_KPC / distances_kpc[None, :])
         grids[preset_name] = snr_grid
         npz_path, grid_csv = _write_grid_outputs(preset_name, alphas, distances_kpc, snr_grid)

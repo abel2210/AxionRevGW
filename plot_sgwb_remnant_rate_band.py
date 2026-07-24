@@ -13,35 +13,22 @@ from scipy.interpolate import PchipInterpolator
 BASE_DIR = Path(__file__).resolve().parent
 FREQUENCY_DATA_DIR = BASE_DIR / "frequency_data"
 FIGURE_DIR = BASE_DIR / "figures"
+MPC = 3.085677581491367e22
+H0 = 67.74 * 1.0e3 / MPC
 
 
 CURVE_SPECS = (
     (
-        "highfre_axionplusbackreaction",
+        "highfre_transition_radiation",
         {
             "upward": r"$\left|300\right\rangle\rightarrow\left|322\right\rangle$",
             "downward": r"$\left|322\right\rangle\rightarrow\left|300\right\rangle$",
         },
         "#0072B2",
     ),
-    (
-        "highfre644_axionplusbackreaction",
-        {
-            "upward": r"$\left|544\right\rangle\rightarrow\left|644\right\rangle$",
-            "downward": r"$\left|644\right\rangle\rightarrow\left|544\right\rangle$",
-        },
-        "#009E73",
-    ),
-    (
-        "highfre_pure_binary_template",
-        {"upward": "pure template", "downward": "pure template"},
-        "#C44E52",
-    ),
 )
 
-PLOT_MIN_FREQUENCY_HZ = {
-    "highfre_pure_binary_template": 5.0e-1,
-}
+PLOT_MIN_FREQUENCY_HZ = {}
 
 SENSITIVITY_FILES = {
     "CE": BASE_DIR / "CE.csv",
@@ -176,7 +163,17 @@ def load_all_sensitivity_curves() -> list[dict[str, object]]:
     curves = []
     for detector_name, path in SENSITIVITY_FILES.items():
         frequency_hz, sensitivity = load_sensitivity_curve(path)
-        smooth_frequency_hz, smooth_sensitivity = smooth_sensitivity_curve(frequency_hz, sensitivity)
+        smooth_frequency_hz, smooth_characteristic_strain = smooth_sensitivity_curve(
+            frequency_hz,
+            sensitivity,
+        )
+        smooth_sensitivity = (
+            2.0
+            * np.pi**2
+            * smooth_frequency_hz**2
+            * smooth_characteristic_strain**2
+            / (3.0 * H0**2)
+        )
         curves.append(
             {
                 "label": detector_name,
@@ -194,6 +191,7 @@ def plot_direction(
     r_eff_max: float,
     curve_suffix: str,
     output_suffix: str,
+    copy_to_prl: bool,
 ) -> Path:
     curves = [
         load_omega_curve(direction=direction, key=key, label=labels[direction], color=color, curve_suffix=curve_suffix)
@@ -299,7 +297,7 @@ def plot_direction(
     fig.add_artist(power_legend)
     fig.legend(
         handles=sensitivity_handles,
-        title="Detector",
+        title=r"Equivalent $\Omega_{\rm GW}$",
         loc="lower center",
         bbox_to_anchor=(0.5, 0.02),
         ncol=4,
@@ -313,7 +311,11 @@ def plot_direction(
 
     suffix = normalize_suffix(output_suffix)
     output_path = FIGURE_DIR / f"sgwb_power_spectra_with_remnant_rate_band{suffix}_{direction}.pdf"
-    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    try:
+        fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    except PermissionError:
+        output_path = output_path.with_name(f"{output_path.stem}_updated{output_path.suffix}")
+        fig.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
     return output_path
@@ -339,7 +341,7 @@ def parse_args() -> argparse.Namespace:
         "--directions",
         nargs="+",
         choices=("upward", "downward"),
-        default=("upward", "downward"),
+        default=("downward",),
         help="Which SGWB directions to plot.",
     )
     parser.add_argument(
@@ -351,6 +353,11 @@ def parse_args() -> argparse.Namespace:
         "--output-suffix",
         default="",
         help="Suffix inserted into the generated figure names. Example: sfr.",
+    )
+    parser.add_argument(
+        "--no-copy-to-prl",
+        action="store_true",
+        help="Retained for command-line compatibility; figures are written only to figures/.",
     )
     return parser.parse_args()
 
@@ -367,6 +374,7 @@ def main() -> None:
             r_eff_max=args.r_eff_max,
             curve_suffix=args.curve_suffix,
             output_suffix=args.output_suffix,
+            copy_to_prl=not args.no_copy_to_prl,
         )
         first_curve = load_omega_curve(
             direction=direction,

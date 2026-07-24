@@ -11,6 +11,7 @@ from lowfre_decigo_snr_scan import (
     PRESETS,
     REFERENCE_DISTANCE_KPC,
     SNR_MODEL_VERSION,
+    source_kwargs_for_preset,
 )
 from lowfre_shared import build_paper_inspired_lowfreq_profile
 
@@ -37,24 +38,32 @@ class SelectedPoint:
 def _parse_args():
     parser = argparse.ArgumentParser(
         description=(
-            "Pick low-frequency DECIGO SNR-scan points that just pass a requested "
-            "SNR floor, then rerun the full lowfre pipeline and compare mismatch "
-            "M with N/(2 rho^2)."
+            "Rerun the low-frequency pipeline at common source parameters and "
+            "report the fixed-parameter DECIGO waveform mismatch."
         )
     )
     parser.add_argument(
         "--presets",
-        default="211,211v,322,322v",
-        help="Comma-separated presets to probe. Default: all four low-frequency transitions.",
+        default="211v,322v",
+        help="Comma-separated presets to probe. Default: the two transitions that begin in superradiant levels.",
+    )
+    parser.add_argument(
+        "--fixed-alpha",
+        type=float,
+        default=0.30,
+        help="Common alpha used for the mismatch comparison. Default: 0.30.",
+    )
+    parser.add_argument(
+        "--fixed-distance-kpc",
+        type=float,
+        default=REFERENCE_DISTANCE_KPC,
+        help="Common luminosity distance in kpc. Default: 100.",
     )
     parser.add_argument(
         "--snr-min",
         type=float,
         default=8.0,
-        help=(
-            "SNR floor used to select scan points. Default 8.0. "
-            "For the bare necessary mismatch condition with N=13, use about 2.55."
-        ),
+        help="SNR floor used only if --fixed-alpha is negative. Default: 8.0.",
     )
     parser.add_argument(
         "--min-line-freq-mhz",
@@ -81,12 +90,6 @@ def _parse_args():
         help="Only report selected scan points; do not run the full lowfre pipeline.",
     )
     parser.add_argument(
-        "--mismatch-d",
-        type=float,
-        default=13.0,
-        help="Effective parameter-space dimension N used in N/(2 rho^2). Default: 13.",
-    )
-    parser.add_argument(
         "--duration-yr",
         type=float,
         default=None,
@@ -97,6 +100,18 @@ def _parse_args():
         type=int,
         default=None,
         help="Override mismatch time samples. Default: profile value.",
+    )
+    parser.add_argument(
+        "--mismatch-fft-point-cap",
+        type=int,
+        default=None,
+        help="Override the cumulative-mismatch FFT sample cap for convergence tests.",
+    )
+    parser.add_argument(
+        "--spectrum-pad-factor",
+        type=int,
+        default=1,
+        help="Zero-padding factor used by the mismatch FFTs. Default: 1.",
     )
     return parser.parse_args()
 
@@ -213,17 +228,43 @@ def _select_scan_point(preset, snr_min, min_line_freq_mhz, selection):
     )
 
 
-def _build_simulator(point, mismatch_d):
+def _fixed_scan_point(preset, alpha, distance_kpc):
+    npz_path = SNR_SCAN_DIR / f"{preset}_decigo_axion_snr_alpha_dl_grid.npz"
+    if not npz_path.exists():
+        raise FileNotFoundError(f"Missing SNR grid: {npz_path}")
+    data = np.load(npz_path)
+    alphas = np.asarray(data["alpha"], dtype=float)
+    distances = np.asarray(data["distance_kpc"], dtype=float)
+    snr = np.asarray(data["snr"], dtype=float)
+    alpha_idx = int(np.argmin(np.abs(alphas - float(alpha))))
+    selected_alpha = float(alphas[alpha_idx])
+    selected_distance = float(distance_kpc)
+    finite = np.isfinite(snr[alpha_idx]) & (distances > 0.0)
+    if not np.any(finite):
+        raise RuntimeError(f"{preset}: no finite SNR values at alpha={selected_alpha:g}")
+    snr_at_distance = float(
+        np.median(snr[alpha_idx, finite] * distances[finite]) / selected_distance
+    )
+    return SelectedPoint(
+        preset=preset,
+        alpha=selected_alpha,
+        distance_kpc=selected_distance,
+        scan_snr=snr_at_distance,
+        scan_threshold=np.nan,
+        transition_freq_obs_mhz=_load_transition_freq_obs_mhz(preset, selected_alpha),
+        selection="common-parameters",
+    )
+
+
+def _build_simulator(point):
     preset_cls = PRESETS[point.preset]["class"]
     profile = build_paper_inspired_lowfreq_profile()
-    source_kwargs = dict(profile.source_kwargs)
+    source_kwargs = source_kwargs_for_preset(point.preset, point.alpha, preset_cls)
     source_kwargs.update(
         {
-            "alpha": point.alpha,
             "distance_Mpc": point.distance_kpc / 1000.0,
             "detector_names": (DETECTOR,),
             "detector_curve_kinds": {DETECTOR: "characteristic_strain"},
-            "mismatch_threshold_d": float(mismatch_d),
             "module_stem": f"{preset_cls.__module__}_snrprobe",
             "save_figure_dir": "figures/snr_threshold_probe",
             "save_time_series_data_dir": "diagnostics/lowfre_mismatch_threshold_probe/waveform_data",
@@ -240,9 +281,8 @@ def _final_series_metrics(series):
     obs_years = np.asarray(series.get("observation_years", []), dtype=float)
     mismatch = np.asarray(series.get("mismatch", []), dtype=float)
     rho = np.asarray(series.get("snr", []), dtype=float)
-    threshold = np.asarray(series.get("distinguishability_threshold", []), dtype=float)
     raw_mismatch = np.asarray(series.get("raw_mismatch", []), dtype=float)
-    finite = np.isfinite(obs_years) & np.isfinite(mismatch) & np.isfinite(rho) & np.isfinite(threshold)
+    finite = np.isfinite(obs_years) & np.isfinite(mismatch) & np.isfinite(rho)
     if not np.any(finite):
         return {}
 
@@ -253,8 +293,6 @@ def _final_series_metrics(series):
         "mismatch": float(mismatch[idx]),
         "raw_mismatch": raw_value,
         "rho_mismatch_band": float(rho[idx]),
-        "threshold": float(threshold[idx]),
-        "passes": bool(mismatch[idx] > threshold[idx]),
     }
 
 
@@ -264,21 +302,22 @@ def _instant_match_metrics(match):
     return {
         "mismatch": float(match.get("mismatch", np.nan)),
         "rho_mismatch_band": float(match.get("snr", np.nan)),
-        "threshold": float(match.get("distinguishability_threshold", np.nan)),
-        "passes": bool(float(match.get("mismatch", np.nan)) > float(match.get("distinguishability_threshold", np.inf))),
         "band_low_mhz": float(match.get("analysis_band_hz", (np.nan, np.nan))[0]) * 1.0e3,
         "band_high_mhz": float(match.get("analysis_band_hz", (np.nan, np.nan))[1]) * 1.0e3,
     }
 
 
 def _run_full_probe(point, args):
-    simulator, profile = _build_simulator(point, args.mismatch_d)
+    simulator, profile = _build_simulator(point)
+    if args.mismatch_fft_point_cap is not None:
+        simulator.mismatch_fft_point_cap = int(max(128, args.mismatch_fft_point_cap))
     run_kwargs = dict(profile.run_kwargs)
     if args.duration_yr is not None:
         run_kwargs["duration_yr"] = float(args.duration_yr)
         run_kwargs["mismatch_max_years"] = min(float(args.duration_yr), float(run_kwargs["mismatch_max_years"]))
     if args.mismatch_time_samples is not None:
         run_kwargs["mismatch_time_samples"] = int(args.mismatch_time_samples)
+    run_kwargs["spectrum_pad_factor"] = int(max(1, args.spectrum_pad_factor))
 
     print(
         f"[{point.preset}] full run: alpha={point.alpha:.12g}, "
@@ -291,12 +330,21 @@ def _run_full_probe(point, args):
     final_series = _final_series_metrics(results.get("mismatch_time_series", {}).get(DETECTOR, {}))
     instant_match = _instant_match_metrics(results.get("detector_match", {}).get(DETECTOR, {}))
     selected_match = _instant_match_metrics(results.get("selected_detector_match", {}).get(DETECTOR, {}))
+    cloud = results.get("cloud", {})
+    time_window = results.get("time_window", {})
+    resonance_time_obs_s = float(
+        time_window.get(
+            "reference_resonance_time_obs",
+            float(cloud.get("resonance_time", np.nan)) * (1.0 + simulator.z),
+        )
+    )
     return {
         "elapsed_s": elapsed,
         "run_kwargs": run_kwargs,
         "final_series": final_series,
         "instant_match": instant_match,
         "selected_match": selected_match,
+        "resonance_time_obs_s": resonance_time_obs_s,
         "mismatch_data_path": str(results.get("mismatch_data_paths", {}).get(DETECTOR, "")),
     }
 
@@ -309,22 +357,17 @@ def _write_reports(points, run_results, min_line_freq_mhz):
         "alpha",
         "distance_kpc",
         "transition_freq_obs_mhz",
+        "resonance_time_obs_s",
         "scan_snr",
         "scan_threshold",
         "final_observation_years",
         "final_mismatch",
         "final_raw_mismatch",
         "final_rho_mismatch_band",
-        "final_threshold_N_over_2rho2",
-        "final_passes",
         "instant_mismatch",
         "instant_rho_mismatch_band",
-        "instant_threshold_N_over_2rho2",
-        "instant_passes",
         "selected_mismatch",
         "selected_rho_mismatch_band",
-        "selected_threshold_N_over_2rho2",
-        "selected_passes",
         "mismatch_data_path",
         "elapsed_s",
     ]
@@ -343,45 +386,40 @@ def _write_reports(points, run_results, min_line_freq_mhz):
                     "alpha": f"{point.alpha:.12g}",
                     "distance_kpc": f"{point.distance_kpc:.16e}",
                     "transition_freq_obs_mhz": f"{point.transition_freq_obs_mhz:.16e}",
+                    "resonance_time_obs_s": result.get("resonance_time_obs_s", ""),
                     "scan_snr": f"{point.scan_snr:.16e}",
                     "scan_threshold": f"{point.scan_threshold:.16e}",
                     "final_observation_years": final_series.get("observation_years", ""),
                     "final_mismatch": final_series.get("mismatch", ""),
                     "final_raw_mismatch": final_series.get("raw_mismatch", ""),
                     "final_rho_mismatch_band": final_series.get("rho_mismatch_band", ""),
-                    "final_threshold_N_over_2rho2": final_series.get("threshold", ""),
-                    "final_passes": final_series.get("passes", ""),
                     "instant_mismatch": instant.get("mismatch", ""),
                     "instant_rho_mismatch_band": instant.get("rho_mismatch_band", ""),
-                    "instant_threshold_N_over_2rho2": instant.get("threshold", ""),
-                    "instant_passes": instant.get("passes", ""),
                     "selected_mismatch": selected.get("mismatch", ""),
                     "selected_rho_mismatch_band": selected.get("rho_mismatch_band", ""),
-                    "selected_threshold_N_over_2rho2": selected.get("threshold", ""),
-                    "selected_passes": selected.get("passes", ""),
                     "mismatch_data_path": result.get("mismatch_data_path", ""),
                     "elapsed_s": f"{result.get('elapsed_s', np.nan):.3f}" if result else "",
                 }
             )
 
     lines = [
-        "# Low-frequency mismatch threshold probe",
+        "# Low-frequency resolved-source diagnostic probe",
         "",
         f"- SNR scan model: `{SNR_MODEL_VERSION}`",
         f"- Selection rule: `{points[0].selection if points else 'n/a'}`",
-        f"- Scan SNR floor: `{points[0].scan_threshold if points else np.nan:g}`",
-        f"- Transition-line floor: `>= {min_line_freq_mhz:g} mHz`.",
-        "- The scan SNR is the extrapolated transition-strain SNR from `lowfre_decigo_snr_scan.py`.",
+        f"- Common alpha: `{points[0].alpha if points else np.nan:g}`",
+        f"- Common luminosity distance: `{points[0].distance_kpc if points else np.nan:g} kpc`.",
+        "- The scan SNR uses only the native frequency support of the tabulated DECIGO curve.",
         "- The mismatch comparison below is recomputed by the full `lowfre_shared` pipeline at the selected alpha and distance.",
         "",
-        "| preset | alpha | dL [kpc] | line f [mHz] | scan SNR | final M | final rho_a | N/(2rho_a^2) | pass? |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|:---:|",
+        "| preset | alpha | dL [kpc] | line f [mHz] | scan SNR | final M | transition rho_a |",
+        "|---|---:|---:|---:|---:|---:|---:|",
     ]
     for point in points:
         final_series = run_results.get(point.preset, {}).get("final_series", {})
         lines.append(
             "| {preset} | {alpha:.6f} | {distance:.6g} | {freq:.6g} | {scan:.6g} | "
-            "{mismatch} | {rho} | {threshold} | {passes} |".format(
+            "{mismatch} | {rho} |".format(
                 preset=point.preset,
                 alpha=point.alpha,
                 distance=point.distance_kpc,
@@ -389,8 +427,6 @@ def _write_reports(points, run_results, min_line_freq_mhz):
                 scan=point.scan_snr,
                 mismatch=_fmt(final_series.get("mismatch")),
                 rho=_fmt(final_series.get("rho_mismatch_band")),
-                threshold=_fmt(final_series.get("threshold")),
-                passes="yes" if final_series.get("passes") else "no",
             )
         )
     lines.extend(
@@ -399,8 +435,8 @@ def _write_reports(points, run_results, min_line_freq_mhz):
             "## Notes",
             "",
             "- `final M` is the last point of the saved mismatch time series.",
-            "- `final rho_a` is the axion-only perturbation SNR used internally by the conservative mismatch threshold calculation.",
-            "- `N/(2rho_a^2)` uses the configured `mismatch_threshold_d` value.",
+            "- The mismatch holds intrinsic source parameters fixed and maximizes only over relative time and phase.",
+            "- It is a waveform-deformation diagnostic, not a parameter-estimation threshold.",
             f"- CSV report: `{REPORT_CSV}`",
         ]
     )
@@ -424,7 +460,19 @@ def main():
     names = _preset_names(args.presets)
     points = []
     for preset in names:
-        point = _select_scan_point(preset, args.snr_min, args.min_line_freq_mhz, args.selection)
+        if args.fixed_alpha >= 0.0:
+            point = _fixed_scan_point(
+                preset,
+                args.fixed_alpha,
+                args.fixed_distance_kpc,
+            )
+        else:
+            point = _select_scan_point(
+                preset,
+                args.snr_min,
+                args.min_line_freq_mhz,
+                args.selection,
+            )
         points.append(point)
         print(
             f"[{preset}] selected alpha={point.alpha:.12g}, dL={point.distance_kpc:.6g} kpc, "

@@ -120,16 +120,11 @@ def add_phase_residual_inset(ax, x_s, phase_residual, color):
         spine.set_alpha(0.75)
 
 
-def direction_signed_axion_strain(sim, cloud, t_values):
-    """Evaluate h_a with the signed transition phase for direction-sensitive plots."""
+def transition_coherence(cloud, t_values):
+    """Return the rotating-frame two-level coherence."""
     cg_r, cg_i, ce_r, ce_i = cloud["solution"].sol(t_values)
     overlap = np.conj(cg_r + 1j * cg_i) * (ce_r + 1j * ce_i)
-    signed_omega = getattr(sim, "transition_energy_change_omega", sim.transition_omega)
-    phase = signed_omega * t_values
-    h_axion = -sim._cloud_amplitude() * (
-        overlap.real * np.cos(phase) - overlap.imag * np.sin(phase)
-    )
-    return h_axion, np.abs(overlap)
+    return np.abs(overlap)
 
 
 def plot_case(
@@ -161,7 +156,7 @@ def plot_case(
     )
     t_wave = np.asarray(window["t_source"], dtype=float)
     x_wave_s = t_wave - t_res
-    _, coherence = direction_signed_axion_strain(sim, results["cloud"], t_wave)
+    coherence = transition_coherence(results["cloud"], t_wave)
     phase_residual = binary_phase_residual_cycles(results, t_wave, t_res)
     coherence_smooth = smooth_series(coherence, window_points=max(301, len(coherence) // 180))
     amplitude_envelope = abs(float(sim._cloud_amplitude())) * coherence_smooth

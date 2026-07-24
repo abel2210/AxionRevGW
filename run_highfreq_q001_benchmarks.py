@@ -4,6 +4,7 @@ import argparse
 import csv
 from dataclasses import dataclass
 from pathlib import Path
+import shutil
 import time
 
 import _plot_backend  # noqa: F401
@@ -24,6 +25,7 @@ from transition_geometry import angle_average_factor_from_metadata
 
 BASE_DIR = Path(__file__).resolve().parent
 BENCHMARK_ROOT = BASE_DIR / "benchmark_highfreq_q001"
+PAPER_FIGURE_DIR = BASE_DIR / "figures"
 
 ALPHA = 0.30
 BH_SPIN = 0.70
@@ -391,6 +393,25 @@ def direction_signed_axion_strain(sim, cloud: dict, t_values: np.ndarray) -> tup
     return h_axion, np.abs(overlap)
 
 
+def smooth_series(values: np.ndarray, window_points: int = 701) -> np.ndarray:
+    values = np.asarray(values, dtype=float)
+    window_points = int(max(3, window_points))
+    if window_points % 2 == 0:
+        window_points += 1
+    if values.size < 2 * window_points:
+        return values
+    kernel = np.ones(window_points, dtype=float) / float(window_points)
+    padded = np.pad(values, window_points // 2, mode="edge")
+    return np.convolve(padded, kernel, mode="valid")
+
+
+def transition_envelope(sim, cloud: dict, t_values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    _, coherence = direction_signed_axion_strain(sim, cloud, t_values)
+    smooth_coherence = smooth_series(coherence, window_points=max(301, len(coherence) // 180))
+    envelope = abs(float(sim._cloud_amplitude())) * smooth_coherence
+    return envelope, smooth_coherence
+
+
 def axis_scale(span_seconds: float) -> tuple[float, str]:
     if span_seconds < 0.3:
         return 1.0e3, "ms"
@@ -413,15 +434,33 @@ def strain_scale_exponent(*arrays: np.ndarray) -> int:
     return int(np.floor(np.log10(peak)))
 
 
+def scaled_strain_label(exponent: int) -> str:
+    if exponent < 0:
+        return rf"$10^{{{-exponent}}}|h_a|_{{\rm env}}$"
+    if exponent > 0:
+        return rf"$10^{{-{exponent}}}|h_a|_{{\rm env}}$"
+    return r"$|h_a|_{\rm env}$"
+
+
 def add_phase_residual_inset(ax, x_values: np.ndarray, phase_residual: np.ndarray, color: str) -> None:
-    inset = ax.inset_axes([0.56, 0.13, 0.38, 0.32])
+    inset = ax.inset_axes([0.56, 0.61, 0.38, 0.32])
     inset.set_facecolor((1.0, 1.0, 1.0, 0.88))
     inset.axhline(0.0, color="0.45", lw=0.8, alpha=0.25)
     inset.axvline(0.0, color="0.45", lw=0.8, alpha=0.25)
     inset.plot(x_values, phase_residual, color=color, lw=0.85)
-    ylim = max(float(np.nanmax(np.abs(phase_residual))) * 1.15, 1.0e-5)
-    inset.set_ylim(-ylim, ylim)
-    inset.set_xticks([np.nanmin(x_values), 0.0, np.nanmax(x_values)])
+    x_abs = max(float(np.nanmax(np.abs(x_values))), 1.0e-12)
+    inset_half_width = 0.36 * x_abs
+    local = np.asarray(phase_residual)[
+        (np.asarray(x_values) >= -inset_half_width)
+        & (np.asarray(x_values) <= inset_half_width)
+    ]
+    if local.size:
+        ymin = float(np.nanmin(local))
+        ymax = float(np.nanmax(local))
+        pad = max(0.08 * (ymax - ymin), 1.0e-5)
+        inset.set_ylim(ymin - pad, ymax + pad)
+    inset.set_xlim(-inset_half_width, inset_half_width)
+    inset.set_xticks([-inset_half_width, 0.0, inset_half_width])
     inset.set_title(r"$\Delta\Phi_{\rm bin}/2\pi$", fontsize=4.6, pad=0.6)
     inset.tick_params(axis="both", which="major", labelsize=4.0, direction="in", top=True, right=True, pad=0.4)
     for spine in inset.spines.values():
@@ -461,7 +500,7 @@ def plot_case(
     t_wave = np.asarray(window["t_source"], dtype=float)
     x_wave = (t_wave - t_res) * time_scale
     x_orbit = (t_orbit - t_res) * time_scale
-    h_axion, coherence = direction_signed_axion_strain(sim, results["cloud"], t_wave)
+    envelope, coherence = transition_envelope(sim, results["cloud"], t_wave)
     phase_residual = binary_phase_residual_cycles(results, t_wave, t_res)
 
     for ax in (ax_orbit, ax_wave):
@@ -476,17 +515,18 @@ def plot_case(
     delta_limit = max(1.2 * float(np.nanmax(np.abs(delta_a))), 1.0e-4)
     ax_orbit.set_ylim(-delta_limit, delta_limit)
 
-    stride = max(1, int(np.ceil(len(x_wave) / 1400)))
-    scaled_h = h_axion / (10.0**strain_exponent)
-    ax_wave.plot(
-        x_wave[::stride],
-        scaled_h[::stride],
+    scaled_envelope = envelope / (10.0**strain_exponent)
+    ax_wave.fill_between(
+        x_wave,
+        0.0,
+        scaled_envelope,
         color="#1F78B4",
-        lw=0.42,
-        alpha=0.82,
+        alpha=0.18,
+        lw=0.0,
     )
+    ax_wave.plot(x_wave, scaled_envelope, color="#1F78B4", lw=0.75, alpha=0.82)
     if show_left_labels:
-        ax_wave.set_ylabel(rf"$h_a/10^{{{strain_exponent}}}$", fontsize=5.8, color="#1F78B4", labelpad=1.0)
+        ax_wave.set_ylabel(scaled_strain_label(strain_exponent), fontsize=5.8, color="#1F78B4", labelpad=1.0)
     else:
         ax_wave.tick_params(axis="y", labelleft=False)
     ax_wave.tick_params(axis="y", labelcolor="#1F78B4")
@@ -512,7 +552,7 @@ def plot_case(
         ax.grid(False)
 
     return {
-        "peak_axion_strain": float(np.nanmax(np.abs(h_axion))),
+        "peak_axion_strain": float(np.nanmax(np.abs(envelope))),
         "peak_coherence": float(np.nanmax(coherence)),
         "max_abs_delta_a": float(np.nanmax(np.abs(delta_a))),
         "max_abs_phase_cycles": float(np.nanmax(np.abs(phase_residual))),
@@ -554,9 +594,9 @@ def plot_orbit_time_summary(benchmark: Benchmark, up_sim, up_results: dict, down
         min(float(down_results["orbit"]["t"][-1]), down_t + half_window_s),
         sample_points=3000,
     )
-    up_h, _ = direction_signed_axion_strain(up_sim, up_results["cloud"], up_window["t_source"])
-    down_h, _ = direction_signed_axion_strain(down_sim, down_results["cloud"], down_window["t_source"])
-    common_strain_exponent = strain_scale_exponent(up_h, down_h)
+    up_envelope, _ = transition_envelope(up_sim, up_results["cloud"], up_window["t_source"])
+    down_envelope, _ = transition_envelope(down_sim, down_results["cloud"], down_window["t_source"])
+    common_strain_exponent = strain_scale_exponent(up_envelope, down_envelope)
 
     cm_to_inch = 1.0 / 2.54
     fig, axes = plt.subplots(
@@ -600,6 +640,9 @@ def plot_orbit_time_summary(benchmark: Benchmark, up_sim, up_results: dict, down
 
     output_path = figure_dir / f"bohr_orbit_time_summary_644_pair_{benchmark.tag}.pdf"
     fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    if benchmark.tag in {"m1_0p1_q001", "m1_0p01_q001"}:
+        PAPER_FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(output_path, PAPER_FIGURE_DIR / output_path.name)
     plt.close(fig)
     return output_path, up_metrics, down_metrics
 

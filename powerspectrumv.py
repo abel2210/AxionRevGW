@@ -16,6 +16,7 @@ from pure_peters_template import save_pure_peters_frequency_amplitude
 from remnant_rate_models import (
     effective_local_rate_gpc3_yr,
     kerr_horizon_frequency_dimensionless,
+    p_superradiant_remnant,
     remnant_cloud_rate_density_si,
     superradiant_spin_threshold,
 )
@@ -31,7 +32,7 @@ EXPECTED_HIGHFREQ_CLOUD_MASS_FRACTION = 0.005
 EXPECTED_ETA_MODEL = "finite_separation_fourier"
 PURE_PETERS_F_ORB_INIT_HZ = 5.112
 EXPECTED_SPECTRUM_WINDOW_MODE = "first_selected_orbits"
-EXPECTED_SPECTRUM_WINDOW_ORBITS = 160.0
+EXPECTED_SPECTRUM_WINDOW_ORBITS = float(os.environ.get("SGWB_WINDOW_ORBITS", "160"))
 PURE_PETERS_WINDOW_ORBITS = EXPECTED_SPECTRUM_WINDOW_ORBITS
 
 C = 2.99792458e8
@@ -110,15 +111,13 @@ SENSITIVITY_STYLES = {
 }
 
 POWER_SPECTRUM_STYLES = {
-    "highfre axion+backreaction": {"color": "#0072B2", "linewidth": 1.9},
-    "highfre644 axion+backreaction": {"color": "#009E73", "linewidth": 1.9},
-    "highfre pure binary template": {"color": "#C44E52", "linewidth": 1.9},
+    "highfre transition radiation": {"color": "#0072B2", "linewidth": 1.9},
+    "highfre644 transition radiation": {"color": "#009E73", "linewidth": 1.9},
 }
 
 POWER_SPECTRUM_LABELS = {
-    "highfre axion+backreaction": r"$\left|322\right\rangle\rightarrow\left|300\right\rangle$",
-    "highfre644 axion+backreaction": r"$\left|644\right\rangle\rightarrow\left|544\right\rangle$",
-    "highfre pure binary template": "pure template",
+    "highfre transition radiation": r"$\left|322\right\rangle\rightarrow\left|300\right\rangle$",
+    "highfre644 transition radiation": r"$\left|644\right\rangle\rightarrow\left|544\right\rangle$",
 }
 
 DETECTOR_LABELS = {
@@ -138,19 +137,14 @@ class ExportTarget:
 
 EXPORT_TARGETS = (
     ExportTarget(
-        label="highfre axion+backreaction",
-        path=FREQUENCY_DATA_DIR / "highfre322v_axion_backreaction_total_frequency_amplitude.txt",
+        label="highfre transition radiation",
+        path=FREQUENCY_DATA_DIR / "highfre322v_axion_frequency_amplitude.txt",
         builder_name="highfre",
     ),
     ExportTarget(
-        label="highfre644 axion+backreaction",
-        path=FREQUENCY_DATA_DIR / "highfre644v_axion_backreaction_total_frequency_amplitude.txt",
+        label="highfre644 transition radiation",
+        path=FREQUENCY_DATA_DIR / "highfre644v_axion_frequency_amplitude.txt",
         builder_name="highfre644",
-    ),
-    ExportTarget(
-        label="highfre pure binary template",
-        path=FREQUENCY_DATA_DIR / "highfre_pure_peters_frequency_amplitude.txt",
-        builder_name="pure_peters",
     ),
 )
 
@@ -327,6 +321,8 @@ def export_needs_rebuild(target: ExportTarget) -> bool:
             return True
         required_metadata = (
             "cloud_evolution_mode",
+            "waveform_phase_convention",
+            "level_damping_convention",
             "resonance_harmonic",
             "max_harmonic",
             "multi_harmonic_drive",
@@ -343,6 +339,10 @@ def export_needs_rebuild(target: ExportTarget) -> bool:
             "fft_amplitude_units",
         )
         if any(key not in metadata for key in required_metadata):
+            return True
+        if metadata.get("waveform_phase_convention") != "physical_transition_beat_v2":
+            return True
+        if metadata.get("level_damping_convention") != "both_absorptive_levels_v1":
             return True
         if "fft_nyquist_hz" not in metadata:
             return True
@@ -435,13 +435,19 @@ def characteristic_mass_msun(metadata):
 def transition_cloud_m(label: str) -> int:
     if "644" in label:
         return 4
-    if "322" in label or "highfre axion" in label:
+    if "322" in label or "highfre transition" in label:
         return 2
     return 0
 
 
-def remnant_cloud_rate_si(z, config: SGWBRateConfig):
-    return remnant_cloud_rate_density_si(
+def remnant_cloud_rate_si(z, config: SGWBRateConfig, alpha: float, cloud_m: int):
+    p_sr = p_superradiant_remnant(
+        alpha=alpha,
+        azimuthal_m=cloud_m,
+        remnant_spin=config.remnant_spin,
+        model=config.spin_model,
+    )
+    return p_sr * remnant_cloud_rate_density_si(
         z,
         r0_gpc3_yr=config.r0_gpc3_yr,
         evolution=config.rate_evolution,
@@ -463,6 +469,17 @@ def sgwb_header_lines(label, metadata, config: SGWBRateConfig, nu_cut, mass_msun
         f_cloud=config.f_cloud,
         f_duty=config.f_duty,
     )
+    p_sr = (
+        p_superradiant_remnant(
+            alpha=alpha,
+            azimuthal_m=cloud_m,
+            remnant_spin=config.remnant_spin,
+            model=config.spin_model,
+        )
+        if cloud_m > 0
+        else 0.0
+    )
+    r_eff0 *= p_sr
     lines = [
         f"label={label}",
         f"source_module={metadata.get('module', 'unknown')}",
@@ -485,6 +502,7 @@ def sgwb_header_lines(label, metadata, config: SGWBRateConfig, nu_cut, mass_msun
         f"kerr_m_omega_h={kerr_horizon_frequency_dimensionless(config.remnant_spin):.16e}",
         f"cloud_azimuthal_m={cloud_m:d}",
         f"superradiant_spin_threshold={threshold:.16e}",
+        f"p_superradiant={p_sr:.16e}",
         f"nu_cut_hz={nu_cut:.16e}",
         f"characteristic_mass_msun={mass_msun:.16e}",
         f"hubble_h0_si={H0:.16e}",
@@ -584,6 +602,8 @@ def compute_omega_gw_curve(source_freq_hz, dE_dnu, metadata, label, config: SGWB
     freq_obs_hz = np.logspace(np.log10(freq_min_obs), np.log10(freq_max_obs), 500)
     omega_gw = np.zeros_like(freq_obs_hz)
     mass_msun = characteristic_mass_msun(metadata)
+    alpha = float(metadata.get("alpha", EXPECTED_HIGHFREQ_ALPHA))
+    cloud_m = transition_cloud_m(label)
 
     for idx, freq_obs in enumerate(freq_obs_hz):
         z_sup = min(config.z_model, max(nu_cut / freq_obs - 1.0, 0.0))
@@ -592,7 +612,7 @@ def compute_omega_gw_curve(source_freq_hz, dE_dnu, metadata, label, config: SGWB
         z_grid = make_redshift_grid(z_sup)
         nu_source = (1.0 + z_grid) * freq_obs
         integrand = (
-            remnant_cloud_rate_si(z_grid, config)
+            remnant_cloud_rate_si(z_grid, config, alpha, cloud_m)
             * interpolate_dE(nu_source)
             / ((1.0 + z_grid) * hubble_e(z_grid))
         )
@@ -654,13 +674,25 @@ def load_all_sensitivity_curves():
     curves = []
     for detector_name, path in SENSITIVITY_FILES.items():
         freq_hz, sensitivity = load_sensitivity_curve(path)
-        smooth_freq_hz, smooth_sensitivity = smooth_sensitivity_curve(freq_hz, sensitivity)
+        smooth_freq_hz, smooth_characteristic_strain = smooth_sensitivity_curve(freq_hz, sensitivity)
+        smooth_sensitivity = (
+            2.0
+            * np.pi**2
+            * smooth_freq_hz**2
+            * smooth_characteristic_strain**2
+            / (3.0 * H0**2)
+        )
         output_path = FREQUENCY_DATA_DIR / f"{detector_name.lower()}_sensitivity_smoothed.txt"
         FREQUENCY_DATA_DIR.mkdir(parents=True, exist_ok=True)
         np.savetxt(
             output_path,
             np.column_stack((smooth_freq_hz, smooth_sensitivity)),
-            header="columns=frequency_hz sensitivity\nsource_file=" + str(path.name),
+            header=(
+                "columns=frequency_hz equivalent_omega_gw\n"
+                "conversion=2_pi_squared_f_squared_hc_squared_over_3_H0_squared\n"
+                "source_file="
+                + str(path.name)
+            ),
             comments="# ",
         )
         print(f"Saved smoothed sensitivity curve: {output_path}")
@@ -733,7 +765,7 @@ def plot_omega_curves(curves, sensitivity_curves):
 
     power_legend = fig.legend(
         handles=power_handles,
-        title="Power Spectra",
+        title="Transition",
         loc="lower center",
         bbox_to_anchor=(0.5, 0.085),
         ncol=2,

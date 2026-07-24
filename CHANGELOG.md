@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-07-24
+
+- Updated the finite-boundary Landau--Zener treatment and regenerated the Bohr event and coherence figures.
+- Restricted the displayed Bohr domain estimate to the numerically checked range \(10^{-4}\leq q\leq10^{-2}\) and updated the reference resonance eccentricity to \(e_{\rm res}=0.6373\).
+- Recomputed the resolved-source analysis for the downward \(|211\rangle\to|21{-}1\rangle\) and \(|322\rangle\to|300\rangle\) transitions, including detector-band and Nyquist checks.
+- Removed the obsolete upward-transition mismatch products whose absorptive initial levels do not survive the adopted observation window without replenishment.
+- Added resonance times to the compact probe output so the revised SNR--mismatch figure can be reproduced without distributing the full probe waveforms.
+- Kept manuscript files, internal technical reports, and submission materials outside the public repository.
+
 ## 2026-06-17
 
 - Synced the public production scripts and generated data products with the current `finalcode` workspace.

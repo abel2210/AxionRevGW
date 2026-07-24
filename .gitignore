@@ -10,3 +10,4 @@ __pycache__/
 .vscode/
 _tmp*/
 build/
+figures/bohr_domain_visibility_map*.png

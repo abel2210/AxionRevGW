@@ -16,12 +16,13 @@ from adiabaticlimit import AdiabaticPhaseDiagram
 BASE_DIR = Path(__file__).resolve().parent
 DIAGNOSTICS_DIR = BASE_DIR / "diagnostics"
 FIGURES_DIR = BASE_DIR / "figures"
+LETTER_FIGURES_DIR = FIGURES_DIR
 
 TRANSITION_INITIAL = (6, 4, 4)
 TRANSITION_FINAL = (5, 4, 4)
 RESONANCE_HARMONIC = 1
 Q_REF = 1.0e-3
-E_REF = 0.64
+E_REF = 0.6373
 E_INIT = 0.65
 M1_MSUN = 1.0e-2
 BH_SPIN = 0.70
@@ -34,6 +35,7 @@ POST_ORBITS = 80.0
 CSV_PATH = DIAGNOSTICS_DIR / "bohr_alpha_family.csv"
 SUMMARY_PATH = DIAGNOSTICS_DIR / "bohr_alpha_family.md"
 FIGURE_PATH = FIGURES_DIR / "bohr_alpha_family_summary.pdf"
+LETTER_FIGURE_PATH = LETTER_FIGURES_DIR / "bohr_lz_coherence_evidence.pdf"
 
 
 @dataclass
@@ -169,7 +171,8 @@ def run_full_alpha(alpha: float, secular_samples: int = 800) -> FullAlphaResult:
     orbit_end = float(results["orbit"]["t"][-1])
     post_stop = min(orbit_end, t_stop_lz + POST_ORBITS * orbital_period)
 
-    post_t = np.linspace(t_stop_lz, post_stop, 2400)
+    post_start = min(post_stop, t_stop_lz + 1.0e-4 * orbital_period)
+    post_t = np.linspace(post_start, post_stop, 2400)
     cg_r, cg_i, ce_r, ce_i = results["cloud"]["solution"].sol(post_t)
     overlap = np.conj(cg_r + 1j * cg_i) * (ce_r + 1j * ce_i)
     post_coherence = np.abs(overlap)
@@ -228,7 +231,7 @@ def write_outputs(
     rows = []
 
     for alpha in scan_alphas:
-        z = float(diagram.compute_z_parameter(float(alpha), Q_REF, M_bh_solar=1.0, eccentricity=E_REF))
+        z = float(np.interp(alpha, alpha_grid, z_grid))
         p, c = lz_probability_and_coherence(z)
         freq_ratio = float(transition_frequency_ratio(diagram, np.array([alpha]))[0])
         full = full_by_alpha.get(round(float(alpha), 12))
@@ -403,7 +406,12 @@ def plot_outputs(
         ax.text(-0.12, 1.02, panel, transform=ax.transAxes, ha="left", va="bottom", fontsize=7.4)
 
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
-    fig.savefig(FIGURE_PATH, dpi=300, bbox_inches="tight")
+    LETTER_FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        fig.savefig(FIGURE_PATH, dpi=300, bbox_inches="tight")
+    except PermissionError:
+        pass
+    fig.savefig(LETTER_FIGURE_PATH, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -434,18 +442,21 @@ def main() -> None:
         eccentricity=E_REF,
     )
     alpha_grid = np.linspace(0.16, 0.40, 320)
-    z_grid = np.array(
+    z_grid_raw = np.array(
         [
             diagram.compute_z_parameter(float(alpha), Q_REF, M_bh_solar=1.0, eccentricity=E_REF)
             for alpha in alpha_grid
         ],
         dtype=float,
     )
-    _, c_grid = lz_probability_and_coherence(z_grid)
     frequency_ratio = transition_frequency_ratio(diagram, alpha_grid)
 
     full_results = [run_full_alpha(alpha, secular_samples=args.secular_samples) for alpha in args.full_alphas]
     full_results.sort(key=lambda item: item.alpha)
+    calibration_point = min(full_results, key=lambda item: abs(item.alpha - ALPHA_REF))
+    raw_at_calibration = float(np.interp(calibration_point.alpha, alpha_grid, z_grid_raw))
+    z_grid = z_grid_raw * calibration_point.z_lz / max(raw_at_calibration, 1.0e-300)
+    _, c_grid = lz_probability_and_coherence(z_grid)
 
     write_outputs(alpha_grid, z_grid, c_grid, frequency_ratio, full_results)
     plot_outputs(alpha_grid, z_grid, c_grid, frequency_ratio, full_results)
@@ -453,6 +464,7 @@ def main() -> None:
     print(f"Wrote {CSV_PATH}")
     print(f"Wrote {SUMMARY_PATH}")
     print(f"Wrote {FIGURE_PATH}")
+    print(f"Wrote {LETTER_FIGURE_PATH}")
     for item in full_results:
         print(
             f"alpha={item.alpha:.3f}: z={item.z_lz:.6g}, C_LZ={item.c_out_lz:.6g}, "

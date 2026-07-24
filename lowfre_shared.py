@@ -304,6 +304,7 @@ class EccentricResonantTidalGA:
         # 若设为 None，则 eta/Gamma 会分别使用潮汐矩阵元公式和末态衰减公式
         eta_ref_hz=None,
         Gamma_decay_hz=None,
+        Gamma_initial_decay_hz=None,
         hubble_constant_km_s_mpc=67.66,
         detector_curve_kinds=None,
         # 跃迁类型：默认先用 fine transition，更适合当前参数求解器公式
@@ -339,6 +340,7 @@ class EccentricResonantTidalGA:
         hansen_M_samples=1024,
         parallel_workers=None,
         mismatch_threshold_d=13.0,
+        mismatch_fft_point_cap=750000,
         save_figure_dir="figures",
         save_figure_formats=("pdf",),
         save_time_series_data_dir="waveform_data",
@@ -430,10 +432,17 @@ class EccentricResonantTidalGA:
         self.transition_energy_sign = float(self.transition_solver_data["transition_energy_sign"])
         self.transition_energy_change_omega = self.transition_energy_sign * self.transition_omega
         auto_gamma_hz = self.transition_solver_data["gamma_decay_hz"]
+        auto_initial_gamma_hz = self.transition_solver_data["gamma_initial_decay_hz"]
         self.eta_ref_hz = None if eta_ref_hz is None else float(eta_ref_hz)
         self.Gamma_decay_hz = float(Gamma_decay_hz if Gamma_decay_hz is not None else auto_gamma_hz)
+        self.Gamma_initial_decay_hz = float(
+            Gamma_initial_decay_hz
+            if Gamma_initial_decay_hz is not None
+            else auto_initial_gamma_hz
+        )
         self.eta_ref = None
         self.Gamma_decay = 2.0 * np.pi * self.Gamma_decay_hz
+        self.Gamma_initial_decay = 2.0 * np.pi * self.Gamma_initial_decay_hz
 
         self.tidal_l = int(tidal_l)
         self.radial_power = self.tidal_l + 1
@@ -513,6 +522,7 @@ class EccentricResonantTidalGA:
         cpu_count = os.cpu_count() or 1
         self.parallel_workers = max(1, int(parallel_workers if parallel_workers is not None else min(8, cpu_count)))
         self.mismatch_threshold_d = float(mismatch_threshold_d)
+        self.mismatch_fft_point_cap = int(max(128, mismatch_fft_point_cap))
         default_curve_kinds = {"DECIGO": "characteristic_strain"}
         if detector_curve_kinds is not None:
             default_curve_kinds.update(
@@ -854,13 +864,20 @@ class EccentricResonantTidalGA:
         )
         eta_drive_gated = eta_drive * resonance_gate
 
-        d_cg = -1j * (0.5 * detuning * cg + eta_drive_gated * ce_tilde)
+        d_cg = (
+            -1j * (0.5 * detuning * cg + eta_drive_gated * ce_tilde)
+            - self.Gamma_initial_decay * cg
+        )
         d_ce = -1j * (np.conj(eta_drive_gated) * cg - 0.5 * detuning * ce_tilde) - self.Gamma_decay * ce_tilde
 
         dadt = dadt_peters
         dedt = dedt_peters
         if self.include_orbital_backreaction and resonance_gate > 0.0:
-            overlap = np.conj(cg) * ce_tilde
+            # Rejected adaptive-solver trial stages can temporarily leave the
+            # physical unit-norm manifold. Bound only their nonlinear orbital
+            # feedback; accepted states with |c_i| <= 1 are unchanged.
+            trial_scale = max(abs(cg), abs(ce_tilde), 1.0)
+            overlap = np.conj(cg / trial_scale) * (ce_tilde / trial_scale)
             if self.orbital_backreaction_mode == "coherent_drive":
                 eta_backreaction = eta_drive_gated
             else:
@@ -968,32 +985,53 @@ class EccentricResonantTidalGA:
         return float(self.resonance_harmonic) * orbital_frequency_hz
 
     def _omega_real_geom(self, state):
-        n, l, _ = state
+        n, l, m = state
         alpha = self.alpha
         term1 = 1.0
         term2 = -alpha**2 / (2.0 * n**2)
         term3 = -alpha**4 / (8.0 * n**4)
-        term4 = ((4.0 * l - 6.0 * n + 2.0) / (2.0 * n * (l + 1.0))) * (alpha**4 / n**3)
-        return alpha * (term1 + term2 + term3 + term4)
+        term4 = ((4.0 * l - 6.0 * n + 2.0) / (2.0 * (l + 0.5) * n**4)) * alpha**4
+        term5 = 0.0
+        if l > 0:
+            term5 = (
+                2.0
+                * m
+                * self.bh_spin
+                * alpha**5
+                / (l * (l + 0.5) * (l + 1.0) * n**3)
+            )
+        return alpha * (term1 + term2 + term3 + term4 + term5)
 
     def _gamma_geom(self, state):
         n, l, m = state
-        n_r = n - l - 1
         chi = self.bh_spin
         r_plus = 1.0 + math.sqrt(max(0.0, 1.0 - chi**2))
         omega_h = chi / (2.0 * r_plus)
+        omega_r = self._omega_real_geom(state)
 
-        coeff_num = 2 ** (4 * l + 2) * math.factorial(2 * l + n_r + 1)
-        coeff_den = ((l + n_r + 1) ** (2 * l + 4)) * math.factorial(n_r) * math.factorial(l)
-        coeff1 = coeff_num / coeff_den
-        coeff2 = (math.factorial(l) / (math.factorial(2 * l) * math.factorial(2 * l + 1))) ** 2
+        c_nl = (
+            2 ** (4 * l + 1)
+            * math.factorial(n + l)
+            / (n ** (2 * l + 4) * math.factorial(n - l - 1))
+            * (
+                math.factorial(l)
+                / (math.factorial(2 * l) * math.factorial(2 * l + 1))
+            )
+            ** 2
+        )
 
         prod_term = 1.0
-        for j in range(1, l + 1):
-            prod_term *= j**2 * (1.0 - chi**2) + 4.0 * (m * omega_h - self.alpha) ** 2
+        for k in range(1, l + 1):
+            prod_term *= k**2 * (1.0 - chi**2) + (chi * m - 2.0 * r_plus * omega_r) ** 2
 
-        c_nlm = coeff1 * coeff2 * prod_term
-        return c_nlm * (m * omega_h - self.alpha) * self.alpha ** (4 * l + 5)
+        return (
+            2.0
+            * r_plus
+            * c_nl
+            * prod_term
+            * (m * omega_h - omega_r)
+            * self.alpha ** (4 * l + 5)
+        )
 
     def _compute_transition_quantities(self):
         # 1. 用两态的实部频率差给出 DeltaE
@@ -1023,7 +1061,10 @@ class EccentricResonantTidalGA:
             transition_energy_sign = self._infer_transition_energy_sign(initial_state, final_state)
         if transition_energy_sign == 0.0:
             raise ValueError("Cannot infer the sign of E_final - E_initial for the selected transition.")
-        gamma_decay_hz = abs(self._gamma_geom(final_state)) * geometric_to_si_angular / (2.0 * np.pi)
+        initial_level_rate_hz = self._gamma_geom(initial_state) * geometric_to_si_angular / (2.0 * np.pi)
+        final_level_rate_hz = self._gamma_geom(final_state) * geometric_to_si_angular / (2.0 * np.pi)
+        gamma_initial_decay_hz = max(0.0, -initial_level_rate_hz)
+        gamma_decay_hz = max(0.0, -final_level_rate_hz)
         boson_angular_frequency = self.alpha * geometric_to_si_angular
         boson_mass_eV = self.hbar * boson_angular_frequency / self.eV
 
@@ -1034,7 +1075,10 @@ class EccentricResonantTidalGA:
             "delta_omega_geom": delta_omega_geom,
             "transition_energy_sign": transition_energy_sign,
             "transition_frequency_hz": transition_frequency_hz,
+            "gamma_initial_decay_hz": gamma_initial_decay_hz,
             "gamma_decay_hz": gamma_decay_hz,
+            "initial_level_rate_hz": initial_level_rate_hz,
+            "final_level_rate_hz": final_level_rate_hz,
             "boson_mass_eV": boson_mass_eV,
         }
 
@@ -1124,7 +1168,7 @@ class EccentricResonantTidalGA:
             * i_out
             / max(m_omega, 1.0e-30) ** (7.0 / 3.0)
         )
-        eta_over_omega = (3.0 * np.pi / 10.0) * i_a * abs(term_inner + term_outer)
+        eta_over_omega = np.sqrt(3.0 * np.pi / 10.0) * i_a * abs(term_inner + term_outer)
         return eta_over_omega * orbital_omega / (2.0 * np.pi)
 
     def _ensure_hansen_table(self):
@@ -1263,6 +1307,11 @@ class EccentricResonantTidalGA:
             rtol=self.solver_rtol,
             atol=self.orbit_atol,
         )
+        if not sol.success or sol.t[-1] < total_time * (1.0 - 1.0e-10):
+            raise RuntimeError(
+                "Peters orbit integration did not reach the requested endpoint: "
+                f"{sol.message}"
+            )
 
         t_grid = np.linspace(0.0, sol.t[-1], int(secular_samples))
         a, e, phi = sol.sol(t_grid)
@@ -1382,6 +1431,11 @@ class EccentricResonantTidalGA:
             rtol=self.solver_rtol,
             atol=self.coupled_atol,
         )
+        if not sol.success or sol.t[-1] < total_time * (1.0 - 1.0e-10):
+            raise RuntimeError(
+                "Coupled orbit-cloud integration did not reach the requested endpoint: "
+                f"{sol.message}"
+            )
 
         t_grid = np.linspace(0.0, sol.t[-1], int(secular_samples))
         a, e, phi, cg_real, cg_imag, ce_real, ce_imag = sol.sol(t_grid)
@@ -1822,10 +1876,12 @@ class EccentricResonantTidalGA:
         overlap_zoom = coherence["overlap"]
 
         h_back = self._binary_strain_time_domain(a_zoom, e_zoom, phi_zoom)
-        cloud_phase = self.transition_omega * t_zoom
-        h_axion = -self._cloud_amplitude() * (
-            overlap_zoom.real * np.cos(cloud_phase) - overlap_zoom.imag * np.sin(cloud_phase)
-        )
+        # The evolved amplitudes are in the frame rotating with the selected
+        # orbital harmonic.  Reconstruct the physical cloud beat once:
+        # b_g^* b_e exp(-i Delta omega t)
+        #     = exp(-i n_res Phi) d_g^* d_e.
+        physical_beat = overlap_zoom * np.exp(-1j * self.resonance_harmonic * phi_zoom)
+        h_axion = -self._cloud_amplitude() * physical_beat.real
 
         orbital_omega_res = np.interp(cloud["resonance_time"], orbit["t"], orbit["omega"])
         orbital_period_res = 2.0 * np.pi / orbital_omega_res
@@ -1841,6 +1897,7 @@ class EccentricResonantTidalGA:
             "h_axion": h_axion,
             "h_total": h_back + h_axion,
             "overlap_abs": coherence["overlap_abs"],
+            "physical_beat": physical_beat,
             "population_norm": coherence["population_norm"],
             "overlap_abs_normalized": coherence["overlap_abs_normalized"],
             "phi": phi_zoom,
@@ -2223,7 +2280,10 @@ class EccentricResonantTidalGA:
                     -1j * (harmonic - self.resonance_harmonic) * phi_val
                 )
                 detuning = harmonic * omega_val - self.transition_omega
-                d_cg = -1j * (0.5 * detuning * cg + eta_scalar * ce_tilde)
+                d_cg = (
+                    -1j * (0.5 * detuning * cg + eta_scalar * ce_tilde)
+                    - self.Gamma_initial_decay * cg
+                )
                 d_ce = -1j * (np.conj(eta_scalar) * cg - 0.5 * detuning * ce_tilde) - self.Gamma_decay * ce_tilde
                 return [d_cg.real, d_cg.imag, d_ce.real, d_ce.imag]
 
@@ -2237,6 +2297,11 @@ class EccentricResonantTidalGA:
                 rtol=self.solver_rtol,
                 atol=1.0e-12 if self.solver_profile == "fast" else 1.0e-14,
             )
+            if not local_sol.success or local_sol.t[-1] < t_stop * (1.0 - 1.0e-10):
+                raise RuntimeError(
+                    "Local two-level integration did not reach the requested endpoint: "
+                    f"{local_sol.message}"
+                )
 
             t_eval = np.linspace(t_start, t_stop, int(max(64, sample_points)))
             cg_r, cg_i, ce_r, ce_i = local_sol.sol(t_eval)
@@ -3093,7 +3158,7 @@ class EccentricResonantTidalGA:
             0.0,
             (min(orbit_signal["t"][-1], orbit_template["t"][-1]) - start_time_source) * (1.0 + self.z),
         )
-        mismatch_fft_point_cap = 750000
+        mismatch_fft_point_cap = self.mismatch_fft_point_cap
 
         def _target_sample_points(duration_obs_s):
             requested_points = max(128, int(np.ceil(points_per_obs_second * duration_obs_s)))
@@ -3173,8 +3238,6 @@ class EccentricResonantTidalGA:
         raw_mismatch_values = np.asarray([item[0] for item in outputs], dtype=float)
         mismatch_values = raw_mismatch_values.copy()
         finite_mismatch = np.isfinite(raw_mismatch_values)
-        if np.any(finite_mismatch):
-            mismatch_values[finite_mismatch] = np.maximum.accumulate(raw_mismatch_values[finite_mismatch])
         finite_pairs = finite_mismatch[:-1] & finite_mismatch[1:]
         downward_steps = (
             raw_mismatch_values[1:][finite_pairs] - raw_mismatch_values[:-1][finite_pairs]
@@ -3191,7 +3254,7 @@ class EccentricResonantTidalGA:
             "effective_observation_years": np.asarray(effective_observation_years, dtype=float),
             "mismatch": mismatch_values,
             "raw_mismatch": raw_mismatch_values,
-            "monotone_envelope_applied": bool(max_downward_correction > 0.0),
+            "monotone_envelope_applied": False,
             "max_downward_correction": max_downward_correction,
             "distinguishability_threshold": threshold_values,
             "snr": snr_values,
@@ -3200,7 +3263,7 @@ class EccentricResonantTidalGA:
             "alignment_time_shift_s": fixed_time_shift_s,
             "alignment_phase_shift_rad": fixed_phase_shift_rad,
             "analysis_band_hz": fixed_analysis_band_hz,
-            "method": "exact_fft_capped_monotone" if max_projected_points > mismatch_fft_point_cap else "exact_fft_monotone",
+            "method": "exact_fft_capped" if max_projected_points > mismatch_fft_point_cap else "exact_fft",
         }
 
     def compute_detector_mismatch_vs_time_or_empty_band(
@@ -3251,10 +3314,11 @@ class EccentricResonantTidalGA:
     def _detector_snr_prefactor(self, detector):
         detector_name = str(detector).upper()
         if detector_name == "DECIGO":
-            # Transition-radiation DECIGO convention: four-unit network response
-            # applied to the fiducial projected strain.  This replaces, rather
-            # than multiplies, the source-angle average used for generic detectors.
-            return float(np.sqrt(1024.0 * np.pi * DECIGO_UNIT_COUNT / 15.0))
+            # The time-domain trace already contains the complete transition
+            # quadrupole.  Removing the (4 |Delta m|^2)^2 source factor from
+            # Eq. (4.3) of Kyriazis & Yang leaves the four-cluster network
+            # response 4 pi N_unit / 15 for a full projected waveform.
+            return float(np.sqrt(4.0 * np.pi * DECIGO_UNIT_COUNT / 15.0))
         # Other detectors use the transition source-angle factor only at the
         # SNR/background layer, not in the time-domain waveform itself.
         return float(np.sqrt(max(self.transition_geometry.source_angle_average_factor, 0.0)))
@@ -3533,7 +3597,8 @@ class EccentricResonantTidalGA:
             f"alpha={self.alpha:.3f}, "
             f"f_orb_init={self.f_orb_init*1.0e3:.3f} mHz, "
             f"eta(A.6 @ a_init)={self.eta_ref_hz:.3e} Hz, "
-            f"Gamma_decay={self.Gamma_decay_hz:.3e} Hz"
+            f"Gamma_i={self.Gamma_initial_decay_hz:.3e} Hz, "
+            f"Gamma_f={self.Gamma_decay_hz:.3e} Hz"
         )
         initial_setup = getattr(self, "initial_frequency_setup", {})
         print(

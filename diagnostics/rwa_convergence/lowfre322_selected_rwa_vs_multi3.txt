@@ -1,10 +1,15 @@
-transition: |300> -> |322>
+case: lowfre322
+transition: $|300\rangle\to|322\rangle$
 selected_active_harmonics: 4
 multi3_active_harmonics: 3,4,5
 max_abs_population_difference: 1.3002596773976077e-07
+selected_population_scale: 1.3777322703332682e-05
 max_fractional_population_difference: 0.009437680349049817
 max_abs_coherence_difference: 2.4301798735811442e-05
+selected_coherence_scale: 0.0037113640513842965
 max_fractional_coherence_difference: 0.006547942589126267
 max_fractional_semimajor_axis_difference: 4.435031563239513e-06
 final_fractional_semimajor_axis_difference: -1.4894666621585666e-06
 duration_years: 0.4
+alpha: 0.25
+observation_years: 0.4

@@ -17,6 +17,7 @@ from lowfre_shared import build_paper_inspired_lowfreq_profile
 BASE_DIR = Path(__file__).resolve().parent
 DIAGNOSTIC_DIR = BASE_DIR / "diagnostics" / "rwa_convergence"
 FIGURE_DIR = DIAGNOSTIC_DIR
+LETTER_FIGURE_DIR = BASE_DIR / "figures"
 
 CONVERGENCE_CASES = [
     {
@@ -220,10 +221,20 @@ def save_representative_figure(series):
         ax.xaxis.label.set_size(9)
 
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+    LETTER_FIGURE_DIR.mkdir(parents=True, exist_ok=True)
     out_fig = FIGURE_DIR / "lowfre322_rwa_convergence.pdf"
+    paper_fig = LETTER_FIGURE_DIR / out_fig.name
     fig.savefig(out_fig, dpi=300, bbox_inches="tight")
+    try:
+        fig.savefig(paper_fig, dpi=300, bbox_inches="tight")
+    except PermissionError:
+        paper_fig = paper_fig.with_name(paper_fig.stem + "_new" + paper_fig.suffix)
+        try:
+            fig.savefig(paper_fig, dpi=300, bbox_inches="tight")
+        except PermissionError:
+            paper_fig = None
     plt.close(fig)
-    return out_fig
+    return out_fig, paper_fig
 
 
 def main():
@@ -244,8 +255,9 @@ def main():
     print(f"Saved {out_md}")
 
     if representative_series is not None:
-        out_fig = save_representative_figure(representative_series)
+        out_fig, paper_fig = save_representative_figure(representative_series)
         print(f"Saved {out_fig}")
+        print(f"Saved {paper_fig}")
 
     for row in rows:
         print(

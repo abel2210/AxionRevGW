@@ -1,6 +1,6 @@
-from pathlib import Path
 import csv
 import math
+from pathlib import Path
 
 import _plot_backend  # noqa: F401
 import matplotlib.pyplot as plt
@@ -14,9 +14,9 @@ DIAG_DIR = Path("diagnostics")
 
 ALPHA_REF = 0.30
 Q_REF = 1.0e-3
-E_RES = 0.64
+E_RES = 0.6373
 SPIN = 0.70
-Z_LZ_REF = 0.505576
+Z_LZ_REF = 0.5740777240495206
 C_OUT_REF = math.sqrt((1.0 - math.exp(-2.0 * math.pi * Z_LZ_REF)) * math.exp(-2.0 * math.pi * Z_LZ_REF))
 
 STATE_LOWER = (5, 4, 4)
@@ -24,18 +24,27 @@ STATE_UPPER = (6, 4, 4)
 RESONANCE_HARMONIC = 1
 
 REFERENCE_CLOUD_FRACTION = 1.0e-4
-REFERENCE_PEAK_STRAIN = 1.18376e-24
+REFERENCE_PRIMARY_MASS_MSUN = 1.0e-2
+REFERENCE_PEAK_STRAIN = 9.531702219146433e-27
 TARGET_PEAK_STRAIN = 1.0e-23
 REFERENCE_DISTANCE_KPC = 1.0
 
 
-def omega_real_geom(state, alpha):
+def omega_real_geom(state, alpha, spin=SPIN):
     n, ell, m = state
     term1 = 1.0
     term2 = -alpha**2 / (2.0 * n**2)
     term3 = -alpha**4 / (8.0 * n**4)
-    term4 = ((4.0 * ell - 6.0 * n + 2.0) / (2.0 * n * (ell + 1.0))) * (alpha**4 / n**3)
-    term5 = -2.0 * m * alpha**5 / (n**3 * ell * (ell + 0.5) * (ell + 1.0))
+    term4 = ((4.0 * ell - 6.0 * n + 2.0) / (2.0 * (ell + 0.5) * n**4)) * alpha**4
+    term5 = 0.0
+    if ell > 0:
+        term5 = (
+            2.0
+            * m
+            * spin
+            * alpha**5
+            / (n**3 * ell * (ell + 0.5) * (ell + 1.0))
+        )
     return alpha * (term1 + term2 + term3 + term4 + term5)
 
 
@@ -107,7 +116,7 @@ def main():
     DIAG_DIR.mkdir(parents=True, exist_ok=True)
 
     alpha_values = np.linspace(0.10, 0.35, 220)
-    q_values = np.geomspace(1.0e-4, 1.0e-1, 220)
+    q_values = np.geomspace(1.0e-4, 1.0e-2, 220)
     alpha_grid, q_grid = np.meshgrid(alpha_values, q_values)
 
     z_lz = (
@@ -140,7 +149,7 @@ def main():
 
     csv_path = DIAG_DIR / "bohr_domain_visibility_map.csv"
     sample_alphas = [0.18, 0.24, 0.30, 0.34]
-    sample_qs = [1.0e-4, 1.0e-3, 1.0e-2, 1.0e-1]
+    sample_qs = [1.0e-4, 1.0e-3, 1.0e-2]
     with csv_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
         writer.writerow(
@@ -197,10 +206,24 @@ def main():
 
     x_edges = alpha_values
     y_edges = q_values
-    c0 = ax0.pcolormesh(x_edges, y_edges, c_out, shading="auto", cmap="viridis", vmin=0.0, vmax=0.5)
+    c0 = ax0.pcolormesh(
+        x_edges,
+        y_edges,
+        c_out,
+        shading="auto",
+        cmap="viridis",
+        vmin=0.0,
+        vmax=0.5,
+        rasterized=True,
+    )
     ax0.contour(alpha_grid, q_grid, c_out, levels=[0.1, 0.3], colors=["white", "white"], linewidths=[0.75, 1.05])
     ax0.contour(alpha_grid, q_grid, z_lz, levels=[1.0], colors=["#D95F02"], linewidths=0.95, linestyles="--")
-    ax0.contour(alpha_grid, q_grid, r_peri_over_x90_upper, levels=[1.0], colors=["#2B2B2B"], linewidths=0.8, linestyles=":")
+    compact_boundary_present = (
+        np.nanmin(r_peri_over_x90_upper) <= 1.0
+        <= np.nanmax(r_peri_over_x90_upper)
+    )
+    if compact_boundary_present:
+        ax0.contour(alpha_grid, q_grid, r_peri_over_x90_upper, levels=[1.0], colors=["#2B2B2B"], linewidths=0.8, linestyles=":")
     ax0.contourf(alpha_grid, q_grid, sr_allowed.astype(float), levels=[-0.1, 0.5], colors=["#D0D0D0"], alpha=0.55)
     ax0.plot(ALPHA_REF, Q_REF, marker="*", ms=7.5, color="#E31A1C", mec="white", mew=0.45, zorder=5)
     ax0.set_yscale("log")
@@ -210,7 +233,12 @@ def main():
     cb0 = fig.colorbar(c0, ax=ax0, pad=0.01)
     cb0.set_label(r"$C_{\rm out}$")
     ax0.text(0.108, 1.35e-4, r"$z_{\rm LZ}=1$", color="#FFB000", fontsize=7.2)
-    ax0.text(0.108, 2.45e-4, r"$r_p=x_{90}^{|644\rangle}$", color="white", fontsize=7.2)
+    compact_label = (
+        r"$r_p=x_{90}^{|644\rangle}$"
+        if compact_boundary_present
+        else r"$r_p<x_{90}^{|644\rangle}$ throughout"
+    )
+    ax0.text(0.108, 2.45e-4, compact_label, color="white", fontsize=7.2)
     if bool(np.all(sr_allowed)):
         ax0.text(0.337, 1.35e-4, r"SR allowed", color="white", fontsize=7.0, ha="right")
 
@@ -221,6 +249,7 @@ def main():
         shading="auto",
         cmap="magma_r",
         norm=LogNorm(vmin=1.0e-4, vmax=1.0e-1),
+        rasterized=True,
     )
     ax1.contour(alpha_grid, q_grid, c_out, levels=[0.1, 0.3], colors=["#355C7D", "#355C7D"], linewidths=[0.75, 1.05])
     ax1.contourf(alpha_grid, q_grid, sr_allowed.astype(float), levels=[-0.1, 0.5], colors=["#D0D0D0"], alpha=0.50)
@@ -255,10 +284,20 @@ def main():
     fig_single, axes_single = plt.subplots(2, 1, figsize=(3.38, 5.55), constrained_layout=True)
     ax0, ax1 = axes_single
 
-    c0 = ax0.pcolormesh(x_edges, y_edges, c_out, shading="auto", cmap="viridis", vmin=0.0, vmax=0.5)
+    c0 = ax0.pcolormesh(
+        x_edges,
+        y_edges,
+        c_out,
+        shading="auto",
+        cmap="viridis",
+        vmin=0.0,
+        vmax=0.5,
+        rasterized=True,
+    )
     ax0.contour(alpha_grid, q_grid, c_out, levels=[0.1, 0.3], colors=["white", "white"], linewidths=[0.75, 1.05])
     ax0.contour(alpha_grid, q_grid, z_lz, levels=[1.0], colors=["#D95F02"], linewidths=0.95, linestyles="--")
-    ax0.contour(alpha_grid, q_grid, r_peri_over_x90_upper, levels=[1.0], colors=["#2B2B2B"], linewidths=0.8, linestyles=":")
+    if compact_boundary_present:
+        ax0.contour(alpha_grid, q_grid, r_peri_over_x90_upper, levels=[1.0], colors=["#2B2B2B"], linewidths=0.8, linestyles=":")
     ax0.contourf(alpha_grid, q_grid, sr_allowed.astype(float), levels=[-0.1, 0.5], colors=["#D0D0D0"], alpha=0.55)
     ax0.plot(ALPHA_REF, Q_REF, marker="*", ms=7.0, color="#E31A1C", mec="white", mew=0.45, zorder=5)
     ax0.set_yscale("log")
@@ -268,7 +307,7 @@ def main():
     cb0 = fig_single.colorbar(c0, ax=ax0, pad=0.01)
     cb0.set_label(r"$C_{\rm out}$")
     ax0.text(0.108, 1.35e-4, r"$z_{\rm LZ}=1$", color="#FFB000", fontsize=7.0)
-    ax0.text(0.108, 2.45e-4, r"$r_p=x_{90}^{|644\rangle}$", color="white", fontsize=7.0)
+    ax0.text(0.108, 2.45e-4, compact_label, color="white", fontsize=7.0)
     if bool(np.all(sr_allowed)):
         ax0.text(0.337, 1.35e-4, r"SR allowed", color="white", fontsize=6.8, ha="right")
 
@@ -279,6 +318,7 @@ def main():
         shading="auto",
         cmap="magma_r",
         norm=LogNorm(vmin=1.0e-4, vmax=1.0e-1),
+        rasterized=True,
     )
     ax1.contour(alpha_grid, q_grid, c_out, levels=[0.1, 0.3], colors=["#355C7D", "#355C7D"], linewidths=[0.75, 1.05])
     ax1.contourf(alpha_grid, q_grid, sr_allowed.astype(float), levels=[-0.1, 0.5], colors=["#D0D0D0"], alpha=0.50)

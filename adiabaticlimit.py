@@ -1,4 +1,4 @@
-import numpy as np
+﻿import numpy as np
 import _plot_backend  # noqa: F401
 import matplotlib.pyplot as plt
 import math
@@ -6,7 +6,7 @@ from pathlib import Path
 from scipy.integrate import cumulative_trapezoid
 from scipy.special import eval_genlaguerre
 
-# 兼容不同版本的 scipy.special 球谐函数
+# 鍏煎涓嶅悓鐗堟湰鐨?scipy.special 鐞冭皭鍑芥暟
 try:
     from scipy.special import sph_harm_y
     def spherical_harmonic(m, l, phi, theta):
@@ -17,7 +17,7 @@ except ImportError:
         return sph_harm(m, l, phi, theta)
 
 # ==========================================
-# PRL 风格高品质绘图设置
+# PRL 椋庢牸楂樺搧璐ㄧ粯鍥捐缃?
 # ==========================================
 plt.rcParams.update({
     "font.family": "serif",
@@ -33,8 +33,8 @@ plt.rcParams.update({
 
 class AdiabaticPhaseDiagram:
     """
-    轻量级、独立的绝热参数相图生成器
-    仅提取共振点瞬时公式，剥离所有繁重的 ODE 积分和波形生成
+    杞婚噺绾с€佺嫭绔嬬殑缁濈儹鍙傛暟鐩稿浘鐢熸垚鍣?
+    浠呮彁鍙栧叡鎸偣鐬椂鍏紡锛屽墺绂绘墍鏈夌箒閲嶇殑 ODE 绉垎鍜屾尝褰㈢敓鎴?
     """
     def __init__(
         self,
@@ -43,27 +43,29 @@ class AdiabaticPhaseDiagram:
         resonance_harmonic=1,
         eccentricity=0.64,
         tidal_l=2,
+        bh_spin=0.70,
     ):
-        # 物理常数
+        # 鐗╃悊甯告暟
         self.G = 6.6743e-11
         self.c = 2.99792458e8
         self.M_sun = 1.98847e30
         
-        # 跃迁配置
+        # 璺冭縼閰嶇疆
         self.initial_state = initial_state
         self.final_state = final_state
         self.resonance_harmonic = resonance_harmonic
         self.eccentricity = float(eccentricity)
         self.tidal_l = int(tidal_l)
+        self.bh_spin = float(bh_spin)
         self.radial_power = self.tidal_l + 1
         self._hansen_cache = {}
         self._fourier_cache = {}
         
-        # 预计算：无量纲的空间重叠积分（不依赖于 M 和 alpha，只需算一次！）
+        # 棰勮绠楋細鏃犻噺绾茬殑绌洪棿閲嶅彔绉垎锛堜笉渚濊禆浜?M 鍜?alpha锛屽彧闇€绠椾竴娆★紒锛?
         self.mixing_overlap_data = self._precompute_mixing_overlaps()
 
     def _radial_wavefunction_dimensionless(self, state, x):
-        n, l, _ = state
+        n, l, m = state
         rho = 2.0 * x / n
         normalization = (2.0 / n) ** 1.5 * math.sqrt(
             math.factorial(n - l - 1) / (2.0 * n * math.factorial(n + l))
@@ -90,7 +92,7 @@ class AdiabaticPhaseDiagram:
         return abs(full_integral)
 
     def _precompute_mixing_overlaps(self):
-        """预计算空间重叠，极大地加速了 alpha 扫描"""
+        """棰勮绠楃┖闂撮噸鍙狅紝鏋佸ぇ鍦板姞閫熶簡 alpha 鎵弿"""
         x_grid = np.logspace(-6, 4, 2048)  # dimensionless r/r_c
         radial_i = self._radial_wavefunction_dimensionless(self.initial_state, x_grid)
         radial_f = self._radial_wavefunction_dimensionless(self.final_state, x_grid)
@@ -210,12 +212,21 @@ class AdiabaticPhaseDiagram:
         )
 
     def _omega_real_geom(self, state, alpha):
-        n, l, _ = state
+        n, l, m = state
         term1 = 1.0
         term2 = -alpha**2 / (2.0 * n**2)
         term3 = -alpha**4 / (8.0 * n**4)
-        term4 = ((4.0 * l - 6.0 * n + 2.0) / (2.0 * n * (l + 1.0))) * (alpha**4 / n**3)
-        return alpha * (term1 + term2 + term3 + term4)
+        term4 = ((4.0 * l - 6.0 * n + 2.0) / (2.0 * (l + 0.5) * n**4)) * alpha**4
+        term5 = 0.0
+        if l > 0:
+            term5 = (
+                2.0
+                * m
+                * self.bh_spin
+                * alpha**5
+                / (n**3 * l * (l + 0.5) * (l + 1.0))
+            )
+        return alpha * (term1 + term2 + term3 + term4 + term5)
 
     def compute_z_components(self, alpha_val, q_ratio, M_bh_solar=1.0, eccentricity=None):
         eccentricity = self.eccentricity if eccentricity is None else float(eccentricity)
@@ -245,7 +256,7 @@ class AdiabaticPhaseDiagram:
             eccentricity,
             self.resonance_harmonic,
         )
-        eta_rad_s = abs((3.0 * np.pi / 10.0) * i_a * coefficient * omega_orb_res)
+        eta_rad_s = abs(np.sqrt(3.0 * np.pi / 10.0) * i_a * coefficient * omega_orb_res)
 
         orbital_sweep_rate = (
             omega_orb_res**2
@@ -274,8 +285,8 @@ class AdiabaticPhaseDiagram:
         return self.compute_z_components(alpha_val, q_ratio, M_bh_solar, eccentricity)["z"]
 
     def compute_z_parameter_legacy(self, alpha_val, q_ratio, M_bh_solar=1.0):
-        """核心计算函数：获取特定参数下的 z 值"""
-        # 1. 计算跃迁频率
+        """Return the legacy z parameter for a specified parameter point."""
+        # 1. 璁＄畻璺冭縼棰戠巼
         omega_i = self._omega_real_geom(self.initial_state, alpha_val)
         omega_f = self._omega_real_geom(self.final_state, alpha_val)
         delta_omega_geom = abs(omega_i - omega_f)
@@ -289,10 +300,10 @@ class AdiabaticPhaseDiagram:
         transition_omega = delta_omega_geom * geometric_to_si
         omega_orb_res = transition_omega / self.resonance_harmonic
         
-        # 2. 计算共振点的半长轴
+        # 2. 璁＄畻鍏辨尟鐐圭殑鍗婇暱杞?
         semi_major_axis = (self.G * (primary_mass_kg + companion_mass_kg) / omega_orb_res**2) ** (1.0 / 3.0)
         
-        # 3. 计算耦合强度 eta
+        # 3. 璁＄畻鑰﹀悎寮哄害 eta
         r_c_local = (self.G * primary_mass_kg / self.c**2) / alpha_val**2
         x_star = np.clip(semi_major_axis / r_c_local, 
                          self.mixing_overlap_data["x_grid"][0], 
@@ -306,18 +317,18 @@ class AdiabaticPhaseDiagram:
         term_inner = q_ratio * m_omega * i_in / (alpha_val**3 * (1.0 + q_ratio))
         term_outer = (alpha_val**7 * q_ratio * (1.0 + q_ratio)**(2.0 / 3.0) * i_out) / max(m_omega, 1.0e-30)**(7.0 / 3.0)
         
-        eta_rad_s = (3.0 * np.pi / 10.0) * i_a * abs(term_inner + term_outer) * omega_orb_res
+        eta_rad_s = np.sqrt(3.0 * np.pi / 10.0) * i_a * abs(term_inner + term_outer) * omega_orb_res
         
-        # 4. 计算引力波扫频速度 d\Omega/dt
+        # 4. 璁＄畻寮曞姏娉㈡壂棰戦€熷害 d\Omega/dt
         orbital_sweep_rate = omega_orb_res**2 * (96.0 / 5.0) * q_ratio / (1.0 + q_ratio)**(1.0/3.0) * m_omega**(5.0/3.0)
         resonance_sweep_rate = self.resonance_harmonic * orbital_sweep_rate
         
-        # 5. 绝热参数 z
+        # 5. 缁濈儹鍙傛暟 z
         z_value = (2.0 * eta_rad_s)**2 / max(resonance_sweep_rate, 1.0e-60)
         return z_value
 
 def plot_adiabatic_phase_diagram():
-    # 实例化轻量级生成器 (玻尔跃迁 644 -> 544)
+    # 瀹炰緥鍖栬交閲忕骇鐢熸垚鍣?(鐜诲皵璺冭縼 644 -> 544)
     eccentricity_ref = 0.64
     diagram_generator = AdiabaticPhaseDiagram(
         initial_state=(6,4,4),
@@ -326,7 +337,7 @@ def plot_adiabatic_phase_diagram():
         eccentricity=eccentricity_ref,
     )
     
-    # Build the displayed parameter grid.
+    # 鏋勫缓楂樼簿搴︾綉鏍?
     alpha_grid = np.linspace(0.18, 0.35, 150)
     q_grid = np.logspace(-4, -0.5, 150)
     A, Q = np.meshgrid(alpha_grid, q_grid)
@@ -335,19 +346,19 @@ def plot_adiabatic_phase_diagram():
     print("Computing phase diagram over 150x150 grid... (Takes ~1 second)")
     for i in range(A.shape[0]):
         for j in range(A.shape[1]):
-            # 质量 M 对 z 基本无影响，固定为 1.0
+            # 璐ㄩ噺 M 瀵?z 鍩烘湰鏃犲奖鍝嶏紝鍥哄畾涓?1.0
             Z[i, j] = diagram_generator.compute_z_parameter(A[i, j], Q[i, j], M_bh_solar=1.0)
             
-    # --- 绘图逻辑 ---
+    # --- 缁樺浘閫昏緫 ---
     fig, ax = plt.subplots(figsize=(10, 7.5))
     
-    # 填充彩色对数等高线 (RdYlBu_r 呈现红蓝对比)
+    # 濉厖褰╄壊瀵规暟绛夐珮绾?(RdYlBu_r 鍛堢幇绾㈣摑瀵规瘮)
     p_lz = 1.0 - np.exp(-2.0 * np.pi * Z)
     coherence = np.sqrt(np.clip(p_lz * (1.0 - p_lz), 0.0, None))
     levels = np.linspace(0.0, 0.5, 80)
     cf = ax.contourf(A, Q, coherence, levels=levels, cmap="viridis", extend="max")
     
-    # 绘制 z = 1 临界边界线
+    # 缁樺埗 z = 1 涓寸晫杈圭晫绾?
     c_line = ax.contour(
         A,
         Q,
@@ -358,20 +369,20 @@ def plot_adiabatic_phase_diagram():
         linestyles=["-", "--"],
     )
     
-    # 物理区域标注
-    # 1. 绝热猝灭区 (左上)
+    # 鐗╃悊鍖哄煙鏍囨敞
+    # 1. 缁濈儹鐚濈伃鍖?(宸︿笂)
     ax.text(0.215, 1.7e-1, "Adiabatic depletion\n$(z_{\\rm LZ}\\gg1)$\n",
             color='white', fontsize=16, fontweight='bold', ha='center', va='center',
             bbox=dict(facecolor='black', alpha=0.3, edgecolor='none', boxstyle='round,pad=0.5'))
     
-    # 2. 扫频复活区 (右下)
+    # 2. 鎵澶嶆椿鍖?(鍙充笅)
     ax.text(0.315, 7.0e-4, "Weak passage\n$(z_{\\rm LZ}\\ll1)$\n",
             color='white', fontsize=16, fontweight='bold', ha='center', va='center',
             bbox=dict(facecolor='black', alpha=0.25, edgecolor='none', boxstyle='round,pad=0.5'))
     ax.text(0.302, 1.4e-2, "finite\ncoherence",
             color='white', fontsize=14, fontweight='bold', ha='center', va='center')
     
-    # 手动标注等高线
+    # 鎵嬪姩鏍囨敞绛夐珮绾?
     ax.clabel(
         c_line,
         fmt={0.1: r"$z_{\rm LZ}=0.1$", 1.0: r"$z_{\rm LZ}=1$"},
@@ -408,7 +419,7 @@ def plot_adiabatic_phase_diagram():
         color="white",
     )
     
-    # Add a light grid for readability.
+    # 澧炲姞缁嗙綉鏍肩嚎鎻愬崌瀛︽湳鎰?
     ax.grid(True, which="both", ls="--", alpha=0.2)
     
     plt.tight_layout()
