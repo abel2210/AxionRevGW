@@ -1,0 +1,10 @@
+{
+  "alpha_ref": 0.2,
+  "q_ref": 1e-05,
+  "e_res": 0.63,
+  "cloud_fraction": 1e-11,
+  "z_ref": 0.10305259245562053,
+  "C_ref": 0.4994543260496188,
+  "h_ref": 1.2894047113827957e-33,
+  "scope": "small-q scaling of a vacuum-sweep two-state reference; feedback and level isolation not validated over the whole map"
+}

@@ -1,3 +1,4 @@
+from pathlib import Path
 import csv
 import math
 from pathlib import Path
@@ -12,11 +13,11 @@ from scipy.special import eval_genlaguerre
 FIGURE_DIR = Path("figures")
 DIAG_DIR = Path("diagnostics")
 
-ALPHA_REF = 0.30
-Q_REF = 1.0e-3
-E_RES = 0.6373
+ALPHA_REF = 0.20
+Q_REF = 1.0e-5
+E_RES = 0.63
 SPIN = 0.70
-Z_LZ_REF = 0.5740777240495206
+Z_LZ_REF = 0.10305259245562053  # all allowed multipoles and secular diagonal shifts
 C_OUT_REF = math.sqrt((1.0 - math.exp(-2.0 * math.pi * Z_LZ_REF)) * math.exp(-2.0 * math.pi * Z_LZ_REF))
 
 STATE_LOWER = (5, 4, 4)
@@ -25,7 +26,7 @@ RESONANCE_HARMONIC = 1
 
 REFERENCE_CLOUD_FRACTION = 1.0e-4
 REFERENCE_PRIMARY_MASS_MSUN = 1.0e-2
-REFERENCE_PEAK_STRAIN = 9.531702219146433e-27
+REFERENCE_PEAK_STRAIN = 2.608580455725584e-26
 TARGET_PEAK_STRAIN = 1.0e-23
 REFERENCE_DISTANCE_KPC = 1.0
 
@@ -123,8 +124,6 @@ def main():
         Z_LZ_REF
         * (q_grid / Q_REF)
         * (alpha_grid / ALPHA_REF) ** (-5.0)
-        * peters_eccentricity_factor(E_RES)
-        / peters_eccentricity_factor(E_RES)
     )
     c_out = c_out_from_z(z_lz)
     sr_allowed = np.vectorize(superradiance_allowed)(alpha_grid)
@@ -357,4 +356,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # The previous required-mass display above is a historical reference.
+    from plot_bohr_full_model import figure_map
+    figure_map()

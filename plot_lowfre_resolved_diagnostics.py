@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+# Legacy plot of the selected-n=4 gated scan.  The revised figure uses the
+# four-year multiharmonic data produced by a separate probe pipeline.
+
 import csv
 from pathlib import Path
 
@@ -17,6 +20,9 @@ PROBE_REPORT_CSV = PROBE_DIR / "lowfre_mismatch_threshold_probe.csv"
 PROBE_MISMATCH_DATA_DIR = PROBE_DIR / "mismatch_data"
 PROBE_WAVEFORM_DATA_DIR = PROBE_DIR / "waveform_data"
 FIGURE_DIR = BASE_DIR / "figures"
+PRL_FIGURE_DIRS = (
+    BASE_DIR / "figures",
+)
 
 SNR_COLORBAR_MIN = 1.0e-4
 SNR_COLORBAR_MAX = 1.0e2
@@ -281,8 +287,16 @@ def main() -> None:
 
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)
     out = FIGURE_DIR / "lowfre_decigo_resolved_diagnostics.pdf"
-    saved_out = save_with_fallback(out)
-    print(f"Saved {saved_out}")
+    for figure_dir in PRL_FIGURE_DIRS:
+        figure_dir.mkdir(parents=True, exist_ok=True)
+        prl_out = figure_dir / out.name
+        saved_prl_out = save_with_fallback(prl_out)
+        print(f"Saved {saved_prl_out}")
+    try:
+        saved_out = save_with_fallback(out)
+        print(f"Saved {saved_out}")
+    except PermissionError as exc:
+        print(f"Skipped local figure copy {out}: {exc}")
     plt.close(fig)
 
 

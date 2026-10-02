@@ -12,6 +12,7 @@ import highfre644v
 
 BASE_DIR = Path(__file__).resolve().parent
 FIGURE_DIR = BASE_DIR / "figures"
+PRL_FIGURE_DIR = BASE_DIR / "figures"
 ORBITAL_START_RATIO = 0.90
 LZ_WINDOW_WIDTHS = 240.0
 PLOT_HALF_WINDOW_S = 165.0
@@ -168,7 +169,7 @@ def plot_case(
         ax_orbit.set_ylabel(r"$(a-a_{\rm P})/a_{\rm res}$", fontsize=5.8, labelpad=1.0)
     else:
         ax_orbit.tick_params(axis="y", labelleft=False)
-    ax_orbit.set_ylim(-0.042, 0.042)
+    ax_orbit.set_ylim(-0.015, 0.015)
 
     mark_resonance(ax_wave)
     envelope_scaled = 1.0e27 * amplitude_envelope
@@ -248,12 +249,21 @@ def main():
     fig.subplots_adjust(left=0.14, right=0.88, bottom=0.115, top=0.915, wspace=0.055, hspace=0.055)
 
     FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+    PRL_FIGURE_DIR.mkdir(parents=True, exist_ok=True)
     out = FIGURE_DIR / "bohr_orbit_time_summary_644_pair.pdf"
-    fig.savefig(out, dpi=300, bbox_inches="tight")
+    prl_out = PRL_FIGURE_DIR / "bohr_orbit_time_summary_644_pair_m1_0p01_q0001.pdf"
+    try:
+        fig.savefig(out, dpi=300, bbox_inches="tight")
+    except PermissionError:
+        out = prl_out
+    fig.savefig(prl_out, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
     print(f"Saved {out}")
+    print(f"Saved {prl_out}")
 
 
 if __name__ == "__main__":
-    main()
+    # The previous event/impulse implementation above is a historical reference.
+    from plot_bohr_full_model import figure_pair
+    figure_pair()

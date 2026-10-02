@@ -1,0 +1,1943 @@
+{
+  "scope": "n<=10, |k|<=8, bare detuning within 100 rad/s; no continuum or multilevel evolution",
+  "rows": [
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        5,
+        5
+      ],
+      "k": 1,
+      "detuning": -2.598061585954838,
+      "eta": 0.14703982798834153,
+      "ratio": 0.056595974777211275,
+      "isolated_crossing_probability_estimate": 0.6023733946363332
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        4,
+        2
+      ],
+      "k": 0,
+      "detuning": -2.131702727638185,
+      "eta": 0.046681194813002085,
+      "ratio": 0.02189854814546417,
+      "isolated_crossing_probability_estimate": 0.08876277337574656
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        5,
+        5
+      ],
+      "k": 1,
+      "detuning": 26.00118783193875,
+      "eta": 0.3869602648243596,
+      "ratio": 0.014882407193298842,
+      "isolated_crossing_probability_estimate": 0.998316966352771
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        6,
+        6
+      ],
+      "k": 1,
+      "detuning": 5.1507563589443635,
+      "eta": 0.05539551762872655,
+      "ratio": 0.010754831672931186,
+      "isolated_crossing_probability_estimate": 0.12269039474259187
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        5,
+        5
+      ],
+      "k": 0,
+      "detuning": 26.327912914566696,
+      "eta": 0.21825829095656687,
+      "ratio": 0.008289995931876888,
+      "isolated_crossing_probability_estimate": 0.8689223922841529
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        7,
+        7
+      ],
+      "k": 1,
+      "detuning": 10.865341140732653,
+      "eta": 0.08225805818418004,
+      "ratio": 0.007570683434485644,
+      "isolated_crossing_probability_estimate": 0.25070578374077523
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        6,
+        6
+      ],
+      "k": 2,
+      "detuning": 4.824031276316418,
+      "eta": 0.03060161262994022,
+      "ratio": 0.006343576746730237,
+      "isolated_crossing_probability_estimate": 0.019774419307657776
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        3,
+        3
+      ],
+      "k": 0,
+      "detuning": -40.91564114019275,
+      "eta": 0.23481011193840934,
+      "ratio": 0.005738883844783452,
+      "isolated_crossing_probability_estimate": 0.9048065125116593
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        5,
+        3,
+        3
+      ],
+      "k": -1,
+      "detuning": -70.37550280786354,
+      "eta": 0.3603286651728678,
+      "ratio": 0.005120086547113178,
+      "isolated_crossing_probability_estimate": 0.9960665928704135
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        4,
+        4
+      ],
+      "k": 1,
+      "detuning": -13.705149847238772,
+      "eta": 0.06791916006585595,
+      "ratio": 0.004955740055592306,
+      "isolated_crossing_probability_estimate": 0.17862069475359846
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        4,
+        2
+      ],
+      "k": 1,
+      "detuning": -2.45842781026613,
+      "eta": 0.009237646889050122,
+      "ratio": 0.003757542462900355,
+      "isolated_crossing_probability_estimate": 0.0036333515338529535
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        5,
+        4,
+        2
+      ],
+      "k": -1,
+      "detuning": -3.356857232593484,
+      "eta": 0.01256746042822556,
+      "ratio": 0.003743817373643868,
+      "isolated_crossing_probability_estimate": 0.006714409357789085
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        5,
+        3,
+        3
+      ],
+      "k": 0,
+      "detuning": -70.70222789049149,
+      "eta": 0.24759481516188578,
+      "ratio": 0.0035019379523001425,
+      "isolated_crossing_probability_estimate": 0.926826163235547
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        5,
+        3
+      ],
+      "k": 2,
+      "detuning": -3.4153205345710376,
+      "eta": 0.011805771492602615,
+      "ratio": 0.003456709662563316,
+      "isolated_crossing_probability_estimate": 0.002968166752217496
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        5,
+        3
+      ],
+      "k": 0,
+      "detuning": 25.16516597289592,
+      "eta": 0.07477732496087633,
+      "ratio": 0.002971461624430177,
+      "isolated_crossing_probability_estimate": 0.2122027076955902
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        5,
+        4,
+        0
+      ],
+      "k": -1,
+      "detuning": -7.0404395459522675,
+      "eta": 0.020760589090798524,
+      "ratio": 0.0029487632065151852,
+      "isolated_crossing_probability_estimate": 0.01821663554308474
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        4,
+        4
+      ],
+      "k": 2,
+      "detuning": -14.031874929866717,
+      "eta": 0.04066630552493466,
+      "ratio": 0.0028981376849630267,
+      "isolated_crossing_probability_estimate": 0.034655956353981325
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        7,
+        5
+      ],
+      "k": 1,
+      "detuning": 10.67263140793193,
+      "eta": 0.030330180366143104,
+      "ratio": 0.002841865253924316,
+      "isolated_crossing_probability_estimate": 0.03847972372764147
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        5,
+        5
+      ],
+      "k": 2,
+      "detuning": -2.924786668582783,
+      "eta": 0.008231148852509633,
+      "ratio": 0.0028142732394558093,
+      "isolated_crossing_probability_estimate": 0.0014439496524149384
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        4,
+        0
+      ],
+      "k": 0,
+      "detuning": -4.263405457139015,
+      "eta": 0.010492304555545093,
+      "ratio": 0.002461014947094903,
+      "isolated_crossing_probability_estimate": 0.0046848679306442705
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        6,
+        4
+      ],
+      "k": 1,
+      "detuning": 4.854279846728332,
+      "eta": 0.010822690395470787,
+      "ratio": 0.002229515136578914,
+      "isolated_crossing_probability_estimate": 0.004983803031951215
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        6,
+        4
+      ],
+      "k": 2,
+      "detuning": 4.527554764100387,
+      "eta": 0.009491237568728234,
+      "ratio": 0.0020963275019853056,
+      "isolated_crossing_probability_estimate": 0.001919435099742404
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        5,
+        3
+      ],
+      "k": 1,
+      "detuning": 24.838440890267975,
+      "eta": 0.040302703502633465,
+      "ratio": 0.0016225939333585381,
+      "isolated_crossing_probability_estimate": 0.06693987724405674
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        7,
+        7
+      ],
+      "k": 2,
+      "detuning": 10.538616058104708,
+      "eta": 0.014347367889520636,
+      "ratio": 0.0013614091082184184,
+      "isolated_crossing_probability_estimate": 0.004380627898751457
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        3,
+        3
+      ],
+      "k": 1,
+      "detuning": -41.24236622282069,
+      "eta": 0.04540879909784161,
+      "ratio": 0.001101023128801846,
+      "isolated_crossing_probability_estimate": 0.08419686958150159
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        5,
+        4,
+        0
+      ],
+      "k": 0,
+      "detuning": -7.367164628580213,
+      "eta": 0.007882622291370624,
+      "ratio": 0.001069966898905821,
+      "isolated_crossing_probability_estimate": 0.002646920523953687
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        3,
+        2,
+        2
+      ],
+      "k": -6,
+      "detuning": -42.83403251692289,
+      "eta": 0.04274303445465452,
+      "ratio": 0.0009978755662980734,
+      "isolated_crossing_probability_estimate": 0.012904375466479906
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        5,
+        4,
+        2
+      ],
+      "k": 0,
+      "detuning": -3.683582315221429,
+      "eta": 0.0031246682724351796,
+      "ratio": 0.0008482688874694926,
+      "isolated_crossing_probability_estimate": 0.0004163823163929668
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        3,
+        2,
+        2
+      ],
+      "k": -7,
+      "detuning": -42.50730743429449,
+      "eta": 0.03413327700689076,
+      "ratio": 0.0008029978624181771,
+      "isolated_crossing_probability_estimate": 0.007074439899518377
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        5,
+        1
+      ],
+      "k": 0,
+      "detuning": 24.002419030293822,
+      "eta": 0.017973242727279595,
+      "ratio": 0.0007488096389199476,
+      "isolated_crossing_probability_estimate": 0.013684818670467573
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        4,
+        0
+      ],
+      "k": 1,
+      "detuning": -4.59013053976696,
+      "eta": 0.0033776491340335047,
+      "ratio": 0.0007358503434207313,
+      "isolated_crossing_probability_estimate": 0.0004865172838481707
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        6,
+        2
+      ],
+      "k": 1,
+      "detuning": 4.557803333580978,
+      "eta": 0.0028868121743197716,
+      "ratio": 0.0006333779593012099,
+      "isolated_crossing_probability_estimate": 0.0003554141720647693
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        5,
+        3
+      ],
+      "k": 1,
+      "detuning": -3.0885954519430925,
+      "eta": 0.001945569988266273,
+      "ratio": 0.0006299206284987174,
+      "isolated_crossing_probability_estimate": 0.00016144831987808478
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        5,
+        1
+      ],
+      "k": 1,
+      "detuning": -3.5791293188626696,
+      "eta": 0.002166878764680002,
+      "ratio": 0.0006054206405061009,
+      "isolated_crossing_probability_estimate": 0.00020026295052817078
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        5,
+        3,
+        1
+      ],
+      "k": -1,
+      "detuning": -78.26889348107625,
+      "eta": 0.046952111578033084,
+      "ratio": 0.0005998821433368687,
+      "isolated_crossing_probability_estimate": 0.08974823026095624
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        7,
+        3
+      ],
+      "k": 1,
+      "detuning": 10.479921675131209,
+      "eta": 0.006221527840982096,
+      "ratio": 0.0005936616736120981,
+      "isolated_crossing_probability_estimate": 0.0016497209611826724
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        6,
+        0
+      ],
+      "k": 1,
+      "detuning": 4.261326820433624,
+      "eta": 0.00248127232029287,
+      "ratio": 0.0005822769350604235,
+      "isolated_crossing_probability_estimate": 0.0002625830628594851
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        7,
+        5
+      ],
+      "k": 2,
+      "detuning": 10.345906325303986,
+      "eta": 0.005907481619260428,
+      "ratio": 0.0005709970140375162,
+      "isolated_crossing_probability_estimate": 0.0007440258465827124
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        3,
+        3
+      ],
+      "k": 1,
+      "detuning": -30.966435952268057,
+      "eta": 0.017031233113429096,
+      "ratio": 0.0005499900970095877,
+      "isolated_crossing_probability_estimate": 0.012296545378555509
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        3,
+        3
+      ],
+      "k": 2,
+      "detuning": -31.293161034896002,
+      "eta": 0.016918290676396316,
+      "ratio": 0.0005406385969614955,
+      "isolated_crossing_probability_estimate": 0.006086013593576587
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        6,
+        2
+      ],
+      "k": 2,
+      "detuning": 4.231078250953033,
+      "eta": 0.0022067686449025433,
+      "ratio": 0.0005215617660593911,
+      "isolated_crossing_probability_estimate": 0.00010385703836123154
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        3,
+        1
+      ],
+      "k": 0,
+      "detuning": -45.483575558289886,
+      "eta": 0.022031081890304696,
+      "ratio": 0.000484374449895008,
+      "isolated_crossing_probability_estimate": 0.020490782484597295
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        5,
+        4,
+        -2
+      ],
+      "k": -1,
+      "detuning": -10.724021861173696,
+      "eta": 0.004626674171548857,
+      "ratio": 0.00043143087840017585,
+      "isolated_crossing_probability_estimate": 0.0009126714091799435
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        5,
+        -1
+      ],
+      "k": 1,
+      "detuning": -4.069663184850924,
+      "eta": 0.0010479763424968724,
+      "ratio": 0.0002575093551716764,
+      "isolated_crossing_probability_estimate": 4.684547625710064e-05
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        4,
+        2
+      ],
+      "k": 1,
+      "detuning": -14.604461935504787,
+      "eta": 0.0034763314327667058,
+      "ratio": 0.00023803214716972386,
+      "isolated_crossing_probability_estimate": 0.0005153535743332514
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        4,
+        2
+      ],
+      "k": 2,
+      "detuning": -14.931187018132732,
+      "eta": 0.003514316463227405,
+      "ratio": 0.0002353675202754844,
+      "isolated_crossing_probability_estimate": 0.0002633718868810494
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        5,
+        3,
+        -1
+      ],
+      "k": -1,
+      "detuning": -86.16228415335763,
+      "eta": 0.02022144149739976,
+      "ratio": 0.00023469017443186895,
+      "isolated_crossing_probability_estimate": 0.017290879913805613
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        4,
+        -4
+      ],
+      "k": 0,
+      "detuning": -8.526810913346708,
+      "eta": 0.0016905553765805077,
+      "ratio": 0.00019826350012457092,
+      "isolated_crossing_probability_estimate": 0.00012190098203517372
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        2,
+        2
+      ],
+      "k": 2,
+      "detuning": -61.823888773410545,
+      "eta": 0.009292150929404197,
+      "ratio": 0.00015030033072588927,
+      "isolated_crossing_probability_estimate": 0.0018398294571699287
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        4,
+        0
+      ],
+      "k": 1,
+      "detuning": -15.503774024702125,
+      "eta": 0.002299453264067466,
+      "ratio": 0.0001483157107684718,
+      "isolated_crossing_probability_estimate": 0.00022551481260788003
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        5,
+        1
+      ],
+      "k": 2,
+      "detuning": -3.9058544014906147,
+      "eta": 0.0005718744729211187,
+      "ratio": 0.00014641469295498336,
+      "isolated_crossing_probability_estimate": 6.975009212585507e-06
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        5,
+        -1
+      ],
+      "k": 2,
+      "detuning": -4.396388267478869,
+      "eta": 0.0006207176479111719,
+      "ratio": 0.0001411880867080754,
+      "isolated_crossing_probability_estimate": 8.217340439339641e-06
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        5,
+        -3
+      ],
+      "k": 1,
+      "detuning": -4.560197051770501,
+      "eta": 0.0006387379931624732,
+      "ratio": 0.0001400680685310479,
+      "isolated_crossing_probability_estimate": 1.7402698394402467e-05
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        3,
+        -1
+      ],
+      "k": 0,
+      "detuning": -50.0515099754557,
+      "eta": 0.006733335872186399,
+      "ratio": 0.00013452812663370788,
+      "isolated_crossing_probability_estimate": 0.0019320375184937808
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        4,
+        -2
+      ],
+      "k": 1,
+      "detuning": -6.721833267405145,
+      "eta": 0.0007990217317946094,
+      "ratio": 0.00011886961488157513,
+      "isolated_crossing_probability_estimate": 2.7232414130600766e-05
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        3,
+        1
+      ],
+      "k": 1,
+      "detuning": -45.81030064091783,
+      "eta": 0.005233429818714233,
+      "ratio": 0.00011424133318260141,
+      "isolated_crossing_probability_estimate": 0.0011675998168547198
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        6,
+        0
+      ],
+      "k": 2,
+      "detuning": 3.9346017378056786,
+      "eta": 0.0004439920187140604,
+      "ratio": 0.00011284293768488856,
+      "isolated_crossing_probability_estimate": 4.204305746727204e-06
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        2,
+        2
+      ],
+      "k": 1,
+      "detuning": -61.4971636907826,
+      "eta": 0.006811832820284594,
+      "ratio": 0.00011076661770184329,
+      "isolated_crossing_probability_estimate": 0.001977302498254009
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        5,
+        1
+      ],
+      "k": 1,
+      "detuning": 23.675693947665877,
+      "eta": 0.002580134633803983,
+      "ratio": 0.00010897820522208394,
+      "isolated_crossing_probability_estimate": 0.00028392128402552507
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        7,
+        3
+      ],
+      "k": 2,
+      "detuning": 10.153196592503264,
+      "eta": 0.0011036451765039656,
+      "ratio": 0.0001086992816940879,
+      "isolated_crossing_probability_estimate": 2.5977549196397908e-05
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        5,
+        3,
+        1
+      ],
+      "k": 0,
+      "detuning": -78.59561856370419,
+      "eta": 0.008177706668309127,
+      "ratio": 0.00010404786956006767,
+      "isolated_crossing_probability_estimate": 0.002848515898810957
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        5,
+        4,
+        -4
+      ],
+      "k": -1,
+      "detuning": -14.407604175463803,
+      "eta": 0.0014741186085038954,
+      "ratio": 0.0001023153183937635,
+      "isolated_crossing_probability_estimate": 9.26871659372612e-05
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        4,
+        2,
+        -2
+      ],
+      "k": -2,
+      "detuning": 96.71633061052762,
+      "eta": 0.008897083802620682,
+      "ratio": 9.199153593252875e-05,
+      "isolated_crossing_probability_estimate": 0.0016868392206124802
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        5,
+        -3
+      ],
+      "k": 0,
+      "detuning": 21.676925144158304,
+      "eta": 0.0017296354065194025,
+      "ratio": 7.97915476949239e-05,
+      "isolated_crossing_probability_estimate": 0.0001276016521677978
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        4,
+        0
+      ],
+      "k": 2,
+      "detuning": -15.83049910733007,
+      "eta": 0.0012566934334645302,
+      "ratio": 7.938432167831257e-05,
+      "isolated_crossing_probability_estimate": 3.368187466494094e-05
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        6,
+        -2
+      ],
+      "k": 1,
+      "detuning": 3.964850308217592,
+      "eta": 0.00028548266721893526,
+      "ratio": 7.200339105545567e-05,
+      "isolated_crossing_probability_estimate": 3.4764309680256316e-06
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        3,
+        1
+      ],
+      "k": 1,
+      "detuning": -32.89353328493189,
+      "eta": 0.002092547499599001,
+      "ratio": 6.361577157044331e-05,
+      "isolated_crossing_probability_estimate": 0.00018676047331023753
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        5,
+        3,
+        -1
+      ],
+      "k": 0,
+      "detuning": -86.48900923598558,
+      "eta": 0.0053844595253415405,
+      "ratio": 6.225599729845468e-05,
+      "isolated_crossing_probability_estimate": 0.0012359206597033253
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        7,
+        -1
+      ],
+      "k": 1,
+      "detuning": 10.094502208598442,
+      "eta": 0.000574335211736547,
+      "ratio": 5.689584289231532e-05,
+      "isolated_crossing_probability_estimate": 1.4070278847955291e-05
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        5,
+        4,
+        -2
+      ],
+      "k": 0,
+      "detuning": -11.050746943801641,
+      "eta": 0.0006084679204313131,
+      "ratio": 5.506124821477361e-05,
+      "isolated_crossing_probability_estimate": 1.5792352052263603e-05
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        3,
+        -1
+      ],
+      "k": 1,
+      "detuning": -34.82063061852705,
+      "eta": 0.001878778649167433,
+      "ratio": 5.395590532952006e-05,
+      "isolated_crossing_probability_estimate": 0.00015055438574098438
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        5,
+        -1
+      ],
+      "k": 1,
+      "detuning": 22.512947004132457,
+      "eta": 0.0012047296572007783,
+      "ratio": 5.351274788590046e-05,
+      "isolated_crossing_probability_estimate": 6.190712470229729e-05
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        3,
+        1
+      ],
+      "k": 2,
+      "detuning": -33.220258367559836,
+      "eta": 0.0017017169470606721,
+      "ratio": 5.1225277306164134e-05,
+      "isolated_crossing_probability_estimate": 6.175983320670955e-05
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        3,
+        -1
+      ],
+      "k": 1,
+      "detuning": -50.378235058083646,
+      "eta": 0.0023482913248235636,
+      "ratio": 4.661321148142841e-05,
+      "isolated_crossing_probability_estimate": 0.00023519481545259787
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        6,
+        -4
+      ],
+      "k": 1,
+      "detuning": 3.668373795070238,
+      "eta": 0.00016693512692219525,
+      "ratio": 4.5506574915165904e-05,
+      "isolated_crossing_probability_estimate": 1.1886940224137333e-06
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        5,
+        -1
+      ],
+      "k": 0,
+      "detuning": 22.8396720867604,
+      "eta": 0.0009177546744710802,
+      "ratio": 4.018248033443002e-05,
+      "isolated_crossing_probability_estimate": 3.5926944446113067e-05
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        4,
+        -4
+      ],
+      "k": 1,
+      "detuning": -17.302398201234155,
+      "eta": 0.0006179047998375261,
+      "ratio": 3.571208988783138e-05,
+      "isolated_crossing_probability_estimate": 1.6286001657922673e-05
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        5,
+        3,
+        -3
+      ],
+      "k": -1,
+      "detuning": -94.05567482750166,
+      "eta": 0.003061113400834424,
+      "ratio": 3.254575980076177e-05,
+      "isolated_crossing_probability_estimate": 0.00039961972811557893
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        4,
+        2,
+        -2
+      ],
+      "k": -3,
+      "detuning": 97.04305569315511,
+      "eta": 0.003035194207203439,
+      "ratio": 3.127677900828431e-05,
+      "isolated_crossing_probability_estimate": 0.00013097793683750772
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        5,
+        4,
+        -4
+      ],
+      "k": 0,
+      "detuning": -14.734329258091748,
+      "eta": 0.0004548001732574553,
+      "ratio": 3.086670355270429e-05,
+      "isolated_crossing_probability_estimate": 8.822957771308216e-06
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        4,
+        -4
+      ],
+      "k": 1,
+      "detuning": -8.853535995974653,
+      "eta": 0.00025116222586991796,
+      "ratio": 2.8368577931361134e-05,
+      "isolated_crossing_probability_estimate": 2.6908093974032044e-06
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        3,
+        -1
+      ],
+      "k": 2,
+      "detuning": -35.14735570115499,
+      "eta": 0.0009618576511441162,
+      "ratio": 2.7366430047325243e-05,
+      "isolated_crossing_probability_estimate": 1.973159537808589e-05
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        6,
+        -2
+      ],
+      "k": 2,
+      "detuning": 3.638125225589647,
+      "eta": 9.393933674561282e-05,
+      "ratio": 2.582080904881103e-05,
+      "isolated_crossing_probability_estimate": 1.8820875251319451e-07
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        4,
+        -2
+      ],
+      "k": 2,
+      "detuning": -16.729811195596085,
+      "eta": 0.0003952143232848539,
+      "ratio": 2.3623358247395474e-05,
+      "isolated_crossing_probability_estimate": 3.331267487191419e-06
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        2,
+        -2
+      ],
+      "k": 1,
+      "detuning": -72.28890875276875,
+      "eta": 0.001671887162650284,
+      "ratio": 2.312785172021633e-05,
+      "isolated_crossing_probability_estimate": 0.00011922378613457266
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        7,
+        1
+      ],
+      "k": 2,
+      "detuning": 9.960486858771219,
+      "eta": 0.00022669607107162474,
+      "ratio": 2.2759537187883125e-05,
+      "isolated_crossing_probability_estimate": 1.0960557040310224e-06
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        6,
+        -6
+      ],
+      "k": 1,
+      "detuning": 3.371897283785529,
+      "eta": 7.512697106201036e-05,
+      "ratio": 2.2280326101057128e-05,
+      "isolated_crossing_probability_estimate": 2.407501576930077e-07
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        2,
+        0
+      ],
+      "k": 2,
+      "detuning": -67.21976130393796,
+      "eta": 0.0014632514746942052,
+      "ratio": 2.1768174214098008e-05,
+      "isolated_crossing_probability_estimate": 4.566388974940237e-05
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        2,
+        0
+      ],
+      "k": 1,
+      "detuning": -66.89303622131001,
+      "eta": 0.0012439406048682467,
+      "ratio": 1.8595965666033953e-05,
+      "isolated_crossing_probability_estimate": 6.600241547725743e-05
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        7,
+        -3
+      ],
+      "k": 1,
+      "detuning": 9.901792473935075,
+      "eta": 0.00016070729537356608,
+      "ratio": 1.6230121545831524e-05,
+      "isolated_crossing_probability_estimate": 1.101655529714087e-06
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        5,
+        -5
+      ],
+      "k": 0,
+      "detuning": 20.51417820248753,
+      "eta": 0.0003305986389757744,
+      "ratio": 1.6115616999743442e-05,
+      "isolated_crossing_probability_estimate": 4.662039875733368e-06
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        7,
+        1
+      ],
+      "k": 1,
+      "detuning": 10.287211941399164,
+      "eta": 0.00013342899254993002,
+      "ratio": 1.297037460781452e-05,
+      "isolated_crossing_probability_estimate": 7.594079205744412e-07
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        3,
+        -3
+      ],
+      "k": 1,
+      "detuning": -54.94616947524946,
+      "eta": 0.0006617195240855453,
+      "ratio": 1.2043051051695557e-05,
+      "isolated_crossing_probability_estimate": 1.8677498715550882e-05
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        5,
+        3,
+        -3
+      ],
+      "k": 0,
+      "detuning": -94.3823999101296,
+      "eta": 0.0009330676010808936,
+      "ratio": 9.886033857682738e-06,
+      "isolated_crossing_probability_estimate": 3.7135820922752976e-05
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        6,
+        -4
+      ],
+      "k": 2,
+      "detuning": 3.341648712442293,
+      "eta": 2.9868913099576384e-05,
+      "ratio": 8.938376134021056e-06,
+      "isolated_crossing_probability_estimate": 1.9027586829377578e-08
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        2,
+        -2
+      ],
+      "k": 2,
+      "detuning": -72.6156338353967,
+      "eta": 0.0006193114612308836,
+      "ratio": 8.528624326749296e-06,
+      "isolated_crossing_probability_estimate": 8.180151295755624e-06
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        7,
+        -1
+      ],
+      "k": 2,
+      "detuning": 9.767777125970497,
+      "eta": 8.099847245574553e-05,
+      "ratio": 8.292416115882433e-06,
+      "isolated_crossing_probability_estimate": 1.3992602752736417e-07
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        4,
+        -2
+      ],
+      "k": 1,
+      "detuning": -16.40308611296814,
+      "eta": 0.0001317901902433475,
+      "ratio": 8.034475301519957e-06,
+      "isolated_crossing_probability_estimate": 7.408680777977688e-07
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        5,
+        -5
+      ],
+      "k": 2,
+      "detuning": -5.377456000386701,
+      "eta": 4.224616542438787e-05,
+      "ratio": 7.85616198837329e-06,
+      "isolated_crossing_probability_estimate": 3.806444134265318e-08
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        3,
+        -3
+      ],
+      "k": 2,
+      "detuning": -37.074453032887504,
+      "eta": 0.0002874905766311431,
+      "ratio": 7.754411814953004e-06,
+      "isolated_crossing_probability_estimate": 1.7627540575639744e-06
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        5,
+        -3
+      ],
+      "k": 1,
+      "detuning": 21.35020006153036,
+      "eta": 0.00014814810814288377,
+      "ratio": 6.938956436751285e-06,
+      "isolated_crossing_probability_estimate": 9.361962346124943e-07
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        5,
+        -3
+      ],
+      "k": 2,
+      "detuning": -4.886922134398446,
+      "eta": 2.5214828675016125e-05,
+      "ratio": 5.1596542735011135e-06,
+      "isolated_crossing_probability_estimate": 1.3559913472130395e-08
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        4,
+        -4
+      ],
+      "k": 2,
+      "detuning": -17.6291232838621,
+      "eta": 8.89925385604068e-05,
+      "ratio": 5.0480410810826645e-06,
+      "isolated_crossing_probability_estimate": 1.6890870493320754e-07
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        3,
+        -3
+      ],
+      "k": 1,
+      "detuning": -36.74772795025956,
+      "eta": 0.0001371650091079611,
+      "ratio": 3.7326119670207328e-06,
+      "isolated_crossing_probability_estimate": 8.025301784104628e-07
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        5,
+        -5
+      ],
+      "k": 1,
+      "detuning": 20.187453119859583,
+      "eta": 6.05306282252934e-05,
+      "ratio": 2.9984281754564603e-06,
+      "isolated_crossing_probability_estimate": 1.5628784478016729e-07
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        3,
+        -3
+      ],
+      "k": 0,
+      "detuning": -54.61944439262152,
+      "eta": 0.00010164515379591183,
+      "ratio": 1.8609701165258093e-06,
+      "isolated_crossing_probability_estimate": 4.4070515697945235e-07
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        7,
+        -7
+      ],
+      "k": 1,
+      "detuning": 9.51637300833363,
+      "eta": 1.1987674019288715e-05,
+      "ratio": 1.259689380480455e-06,
+      "isolated_crossing_probability_estimate": 6.129777653575491e-09
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        5,
+        -5
+      ],
+      "k": 1,
+      "detuning": -5.050730917758756,
+      "eta": 5.842738133469309e-06,
+      "ratio": 1.156810415879768e-06,
+      "isolated_crossing_probability_estimate": 1.4561553739744053e-09
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        6,
+        4,
+        -2
+      ],
+      "k": 0,
+      "detuning": -6.3951081847772,
+      "eta": 6.855423066422065e-06,
+      "ratio": 1.071979217293085e-06,
+      "isolated_crossing_probability_estimate": 2.004672330071597e-09
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        6,
+        -6
+      ],
+      "k": 2,
+      "detuning": 3.045172201157584,
+      "eta": 2.3697923046792368e-06,
+      "ratio": 7.782129049314157e-07,
+      "isolated_crossing_probability_estimate": 1.1977479814759969e-10
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        7,
+        -5
+      ],
+      "k": 2,
+      "detuning": 9.382357658506407,
+      "eta": 4.332370869188451e-06,
+      "ratio": 4.617571645502723e-07,
+      "isolated_crossing_probability_estimate": 4.0030971663673386e-10
+    },
+    {
+      "initial": [
+        6,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        7,
+        -5
+      ],
+      "k": 1,
+      "detuning": 9.709082741134353,
+      "eta": 3.898773198467689e-06,
+      "ratio": 4.0155937511478854e-07,
+      "isolated_crossing_probability_estimate": 6.483818022263121e-10
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        7,
+        -3
+      ],
+      "k": 2,
+      "detuning": 9.57506739130713,
+      "eta": 1.9221122048139864e-06,
+      "ratio": 2.0074137614519614e-07,
+      "isolated_crossing_probability_estimate": 7.879566962084937e-11
+    },
+    {
+      "initial": [
+        5,
+        4,
+        4
+      ],
+      "final": [
+        8,
+        7,
+        -7
+      ],
+      "k": 2,
+      "detuning": 9.189647925705685,
+      "eta": 6.657965439948438e-07,
+      "ratio": 7.245071295195637e-08,
+      "isolated_crossing_probability_estimate": 9.454268910252617e-12
+    }
+  ]
+}

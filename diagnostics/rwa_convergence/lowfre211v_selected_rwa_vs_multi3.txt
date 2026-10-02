@@ -1,0 +1,15 @@
+case: lowfre211v
+transition: $|211\rangle\to|21{-}1\rangle$
+selected_active_harmonics: 4
+multi3_active_harmonics: 3,4,5
+max_abs_population_difference: 1.1139515530329962e-09
+selected_population_scale: 2.2007507013821708e-08
+max_fractional_population_difference: 0.05061688960650492
+max_abs_coherence_difference: 3.7171415093414407e-06
+selected_coherence_scale: 0.00014834918114952335
+max_fractional_coherence_difference: 0.02505670392339327
+max_fractional_semimajor_axis_difference: 1.999908712070139e-09
+final_fractional_semimajor_axis_difference: -1.709439481471564e-09
+duration_years: 0.4
+alpha: 0.25
+observation_years: 0.4

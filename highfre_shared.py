@@ -162,6 +162,7 @@ class EccentricResonantTidalGA:
         overlap_max_x=5.0e3,
         tidal_l=2,
         tidal_m=0,
+        bohr_multipoles=None,
         cloud_mass_fraction=5.0e-2,
         geom_factor=None,
         observer_theta=np.pi / 2.0,
@@ -303,6 +304,16 @@ class EccentricResonantTidalGA:
 
         self.hansen_e_samples = int(hansen_e_samples)
         self.hansen_M_samples = int(hansen_M_samples)
+        self.bohr_tide = None
+        if self._bohr_m0_quadrupole_factor() is not None:
+            from bohr_tidal import AxisymmetricBohrTide
+            self.bohr_tide = AxisymmetricBohrTide(
+                self.transition_solver_data['initial_state'],
+                self.transition_solver_data['final_state'],
+                self._radial_wavefunction_dimensionless,
+                multipoles=bohr_multipoles,
+                radial_samples=max(8192,self.overlap_grid_points),
+                orbital_samples=self.hansen_M_samples,max_x=self.overlap_max_x)
         self._hansen_e_grid = None
         self._hansen_real = None
         self._hansen_imag = None
@@ -673,6 +684,21 @@ class EccentricResonantTidalGA:
         full_integral = np.trapezoid(phi_integral, theta)
         return abs(full_integral)
 
+    def _bohr_m0_quadrupole_factor(self):
+        initial = self.transition_solver_data["initial_state"]
+        final = self.transition_solver_data["final_state"]
+        if (
+            self.transition_family != "bohr"
+            or self.tidal_l != 2
+            or self.tidal_m != 0
+            or initial[0] == final[0]
+            or initial[1:] != final[1:]
+        ):
+            return None
+        ell, m = initial[1:]
+        # P_2(0) <ell,m|P_2(cos(theta))|ell,m>.
+        return (3 * m * m - ell * (ell + 1)) / (2 * (2 * ell - 1) * (2 * ell + 3))
+
     def _precompute_mixing_overlaps(self):
         # Precompute the radial/angular overlaps entering the eta estimate.
         # Later calls only interpolate with the instantaneous orbital radius.
@@ -700,6 +726,9 @@ class EccentricResonantTidalGA:
         }
 
     def _formula_eta_hz(self, semi_major_axis):
+        if self.bohr_tide is not None and self.eta_model == 'finite_separation_fourier':
+            data=self.bohr_tidal_coefficients(semi_major_axis,self.e_init)
+            return abs(data['eta'][self.harmonic_to_index[self.resonance_harmonic]])/(2*np.pi)
         # Numerical implementation of Eq. (A.6) in 2503.18121.
         # Returns eta/(2pi) in SI units, i.e. in Hz.
         q_mass = self.M_star / self.M
@@ -723,7 +752,10 @@ class EccentricResonantTidalGA:
             * i_out
             / max(m_omega, 1.0e-30) ** (7.0 / 3.0)
         )
-        eta_over_omega = np.sqrt(3.0 * np.pi / 10.0) * i_a * abs(term_inner + term_outer)
+        angular_factor = self._bohr_m0_quadrupole_factor()
+        if angular_factor is None:
+            angular_factor = np.sqrt(3.0 * np.pi / 10.0) * i_a
+        eta_over_omega = abs(angular_factor * (term_inner + term_outer))
         return eta_over_omega * orbital_omega / (2.0 * np.pi)
 
     def _finite_overlap_terms(self, semi_major_axis, x_star):
@@ -746,6 +778,13 @@ class EccentricResonantTidalGA:
             self.mixing_overlap_data["x_grid"],
             self.mixing_overlap_data["outer_cumulative"],
         )
+
+        if self._bohr_m0_quadrupole_factor() is not None:
+            # Eq. (B2): both radial weights use the instantaneous companion radius.
+            return (
+                q_mass * self.alpha**3 / m_omega
+                * (i_in / x_star**3 + x_star**2 * i_out)
+            )
 
         term_inner = q_mass * m_omega * i_in / (self.alpha**3 * (1.0 + q_mass))
         term_outer = (
@@ -832,14 +871,28 @@ class EccentricResonantTidalGA:
             # eccentric orbit.
             eta_base = 2.0 * np.pi * self._formula_eta_hz(semi_major_axis)
             return eta_base * hansen
+        if self.bohr_tide is not None:
+            return self.bohr_tidal_coefficients(semi_major_axis,eccentricity)['eta']
         coeffs = self._finite_separation_fourier_coeffs(semi_major_axis, eccentricity)
         orbital_omega = np.sqrt(self.G * self.M_tot / float(semi_major_axis) ** 3)
-        eta_over_omega = (
-            np.sqrt(3.0 * np.pi / 10.0)
-            * self.mixing_overlap_data["angular_overlap"]
-            * coeffs
-        )
+        angular_factor = self._bohr_m0_quadrupole_factor()
+        if angular_factor is None:
+            angular_factor = np.sqrt(3.0 * np.pi / 10.0) * self.mixing_overlap_data["angular_overlap"]
+        eta_over_omega = angular_factor * coeffs
         return orbital_omega * eta_over_omega
+
+    def bohr_tidal_coefficients(self, semi_major_axis, eccentricity):
+        """Full selected-pair projection; diagonal entries retain their physical sign.
+
+        The manuscript's continuous, shifted-resonance solver is in
+        probe_bohr_monopole_feedback.py. The legacy event/impulse solver retains
+        bare resonance frequencies and is only a reference approximation.
+        """
+        if self.bohr_tide is None:
+            raise ValueError('An equal-l,m Bohr pair is required.')
+        data=self.bohr_tide.coefficients(semi_major_axis/self.r_c,eccentricity,self.harmonics)
+        scale=(self.M_star/self.M)*self.alpha**3*self.c**3/(self.G*self.M)
+        return {key:scale*value for key,value in data.items()}
 
     def _choose_transition_frequency(self, orbit):
         if self.transition_frequency_hz is not None:

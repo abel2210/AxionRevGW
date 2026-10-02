@@ -12,6 +12,8 @@ This repository contains the production scripts and derived data used to generat
 .
 |-- highfre_shared.py, lowfre_shared.py
 |-- highfre*.py, lowfre*.py
+|-- adiabaticlimit.py, bohr_lz_tools.py, bohr_tidal.py
+|-- probe_bohr_*.py, validate_bohr_projection.py
 |-- plot_*.py
 |-- powerspectrum.py, powerspectrumv.py
 |-- transition_geometry.py
@@ -29,30 +31,40 @@ This repository contains the production scripts and derived data used to generat
 - `lowfre_shared.py`: low-frequency fine and hyperfine transition model, including waveform, SNR, and mismatch utilities.
 - `highfre322.py`, `highfre322v.py`, `highfre644.py`, `highfre644v.py`: high-frequency transition presets.
 - `lowfre211.py`, `lowfre211v.py`, `lowfre322.py`, `lowfre322v.py`: low-frequency transition presets.
-- `transition_geometry.py`: angular and radial transition-geometry factors.
+- `transition_geometry.py`: angular and radial transition-geometry factors; `list_transition_geometries.py` and `transition_geometry_factors.csv` tabulate them.
+- `adiabaticlimit.py`: adiabatic two-level phase diagram, including the finite-separation Bohr coupling used by the full-model figures.
+- `bohr_tidal.py`: finite-separation Newtonian potential projected onto an equal-\((\ell,m)\) Bohr pair; supplies the dimensionless coupling kernels.
+- `bohr_lz_tools.py`: Landau--Zener crossing probability and outgoing-coherence utilities.
 - `pure_peters_template.py`: vacuum eccentric-binary template generation.
 - `remnant_rate_models.py`: effective-rate utilities for stochastic-background extensions.
+- `_plot_backend.py`: non-interactive matplotlib backend selection.
 
 ### Figure and Scan Scripts
 
 - `plot_bohr_orbit_time_summary_concise.py`: compact Bohr event time-domain summary.
-- `bohr_lz_tools.py`, `probe_bohr_alpha_family.py`, `probe_bohr_visibility_sweep.py`: numerical support for the finite-coherence visibility figure.
+- `probe_bohr_alpha_family.py`, `probe_bohr_visibility_sweep.py`: numerical support for the finite-coherence visibility figure.
 - `plot_bohr_domain_visibility_map.py`: parameter-domain and waveform-normalization map.
+- `probe_bohr_domain_scaling_validation.py`: scaling validation of the compact domain estimate over the declared mass-ratio range.
+- `plot_bohr_full_model.py`: full-model Bohr figures (orbit-time summary, domain map, coherence map) built from the finite-separation projection; heavier than the compact probes.
+- `probe_bohr_monopole_feedback.py`: two-state passage with the full allowed multipole set and continuous orbital feedback.
+- `probe_bohr_nearby_levels.py`: finite bound-state screen around the selected passage.
+- `validate_bohr_projection.py`: independent quadrature and cross-script checks for the selected Bohr pair.
+- `compact_bohr_domain_check.py`: compact-overlap check of the displayed domain boundary.
 - `plot_lowfre_resolved_diagnostics.py`: downward-transition SNR and fixed-parameter mismatch diagnostic figure.
 - `plot_sgwb_remnant_rate_band.py`: rate-normalized stochastic-background spectra.
 - `lowfre_decigo_snr_scan.py`: DECIGO SNR scans for low-frequency transitions.
 - `probe_lowfre_mismatch_from_snr_scan.py`: mismatch probe based on selected SNR scan points.
 - `lowfreq_rwa_convergence.py`: selected-harmonic RWA convergence check.
-- `run_highfreq_q001_benchmarks.py`: mass-scaling benchmark at fixed `q=0.01`.
+- `run_highfreq_q001_benchmarks.py`, `probe_bohr_q001_boundary.py`: mass-scaling benchmarks at fixed `q=0.01`.
 
 ### Data Directories
 
 - `figures/`: production figure PDFs.
-- `frequency_data/`: frequency-domain strain and stochastic-background spectra, including detector sensitivity curves.
+- `frequency_data/`: frequency-domain strain and stochastic-background spectra, including detector sensitivity curves and transition-radiation spectra for the 80/160/320-orbit spectrum windows.
 - `waveform_data/`: time-domain and windowed frequency-domain waveform samples.
 - `snr_scan_data/`: low-frequency DECIGO SNR grids and reference slices.
-- `diagnostics/`: numerical CSV/TXT data needed by plotting scripts, with internal reports removed.
-- `benchmark_highfreq_q001/`: high-frequency `q=0.01` benchmark outputs for three primary masses.
+- `diagnostics/`: numerical CSV/TXT/JSON data needed by plotting scripts, with internal reports removed.
+- `benchmark_highfreq_q001/`: high-frequency `q=0.01` benchmark outputs for three primary masses, summarized in `summary.md`.
 
 Detector sensitivity inputs are stored as:
 
@@ -74,7 +86,7 @@ pip install -r requirements.txt
 Main dependencies:
 
 - `numpy`
-- `scipy`
+- `scipy` (the Bohr projection modules use `scipy.special.sph_harm_y`, which requires SciPy >= 1.15)
 - `matplotlib`
 
 Version-level changes are recorded in `CHANGELOG.md`.
@@ -88,11 +100,26 @@ python plot_bohr_orbit_time_summary_concise.py
 python probe_bohr_alpha_family.py
 python probe_bohr_visibility_sweep.py
 python plot_bohr_domain_visibility_map.py
+python probe_bohr_domain_scaling_validation.py
 python plot_lowfre_resolved_diagnostics.py
 python plot_sgwb_remnant_rate_band.py
 ```
 
 The finite-coherence figure is assembled from the outputs of `probe_bohr_alpha_family.py` and `probe_bohr_visibility_sweep.py`. Generated figures are written to `figures/`.
+
+The full-model Bohr figures are produced by:
+
+```bash
+python plot_bohr_full_model.py
+```
+
+This script also writes the `diagnostics/bohr_full_*` data products. The independent projection and screening checks are reproduced with:
+
+```bash
+python validate_bohr_projection.py
+python probe_bohr_nearby_levels.py
+python compact_bohr_domain_check.py
+```
 
 Some scripts can be computationally heavier because they integrate coupled orbital and cloud evolution. The supplied data directories contain the production outputs used to make the paper figures.
 
@@ -132,6 +159,12 @@ that begin in populated superradiant levels; upward examples initialized in
 absorptive levels require an explicit replenishment history. The reported
 mismatch holds intrinsic source parameters fixed and is a waveform-deformation
 diagnostic, not a parameter-optimized detection forecast.
+
+The full-model Bohr figures use the finite-separation projection with continuous
+orbital feedback for the fiducial waveform, while the accompanying parameter
+maps and the Landau--Zener comparison are vacuum-sweep, two-state references.
+The nearby-level screen is a finite bound-state calculation, not a continuum
+treatment.
 
 The stochastic-background scripts are retained as an optional rate-normalized
 extension. Their effective event rate is an external population input rather

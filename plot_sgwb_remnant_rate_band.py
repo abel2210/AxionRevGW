@@ -13,6 +13,7 @@ from scipy.interpolate import PchipInterpolator
 BASE_DIR = Path(__file__).resolve().parent
 FREQUENCY_DATA_DIR = BASE_DIR / "frequency_data"
 FIGURE_DIR = BASE_DIR / "figures"
+PRL_FIGURE_DIR = BASE_DIR / "figures"
 MPC = 3.085677581491367e22
 H0 = 67.74 * 1.0e3 / MPC
 
@@ -314,9 +315,16 @@ def plot_direction(
     try:
         fig.savefig(output_path, dpi=300, bbox_inches="tight")
     except PermissionError:
-        output_path = output_path.with_name(f"{output_path.stem}_updated{output_path.suffix}")
+        PRL_FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+        output_path = PRL_FIGURE_DIR / output_path.name
         fig.savefig(output_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
+
+    if copy_to_prl:
+        PRL_FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+        prl_output_path = PRL_FIGURE_DIR / output_path.name
+        if output_path.resolve() != prl_output_path.resolve():
+            prl_output_path.write_bytes(output_path.read_bytes())
 
     return output_path
 
@@ -357,7 +365,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--no-copy-to-prl",
         action="store_true",
-        help="Retained for command-line compatibility; figures are written only to figures/.",
+        help="Do not save the extra copy of the generated PDFs in the figures directory.",
     )
     return parser.parse_args()
 

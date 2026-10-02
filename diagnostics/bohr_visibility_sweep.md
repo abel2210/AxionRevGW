@@ -12,9 +12,9 @@ The final evidence is organized as a code-assembled four-panel figure for the Le
 
 | case | z_LZ | lambda | P_e | P_g | C_post=h/A0 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| slow | 7.55025 | 7.603e-02 | 1 | 0 | 0 |
-| reference | 0.574078 | 1.000e+00 | 0.972868 | 0.0271321 | 0.162468 |
-| very fast | 0.0001 | 5.741e+03 | 0.000628121 | 0.999372 | 0.0250545 |
+| slow | 7.55025 | 7.395e-03 | 1 | 0 | 0 |
+| reference | 0.0558338 | 1.000e+00 | 0.295885 | 0.704115 | 0.45644 |
+| very fast | 0.0001 | 5.583e+02 | 0.000628121 | 0.999372 | 0.0250545 |
 
 Only the sweep rate changes in this controlled test.  The waveform normalization is fixed, so \(h_{\rm pk,post}/\mathcal{A}_0=C_{\rm post}\).
 
@@ -22,15 +22,15 @@ Only the sweep rate changes in this controlled test.  The waveform normalization
 
 | alpha | z_LZ | C_post | h_pk,post |
 | ---: | ---: | ---: | ---: |
-| 0.18 | 7.55025 | 1.65799e-08 | 3.461548e-34 |
-| 0.30 | 0.574078 | 0.162468 | 9.531703e-27 |
+| 0.16 | 1.31061 | 0.0162846 | 2.682528e-28 |
+| 0.30 | 0.0558338 | 0.456439 | 2.677838e-26 |
 
-The physical alpha-family coherence ratio is 9.799e+06.
+The physical alpha-family coherence ratio is 2.803e+01.
 
 ## Figures
 
-- finite \(z_{\rm LZ}\): `D:/power/paper/AxionGW/code/finalcode/figures/bohr_finite_crossing_zlz.pdf`
-- finite envelope: `D:/power/paper/AxionGW/code/finalcode/figures/bohr_finite_crossing_envelope.pdf`
-- sweep \(z_{\rm LZ}\): `D:/power/paper/AxionGW/code/finalcode/figures/bohr_sweep_rate_zlz.pdf`
-- sweep envelope: `D:/power/paper/AxionGW/code/finalcode/figures/bohr_sweep_rate_envelope.pdf`
-- combined four-panel figure: `D:/power/paper/AxionGW/code/finalcode/figures/bohr_visibility_two_group_four_panel.pdf`
+- finite \(z_{\rm LZ}\): `figures/bohr_finite_crossing_zlz.pdf`
+- finite envelope: `figures/bohr_finite_crossing_envelope.pdf`
+- sweep \(z_{\rm LZ}\): `figures/bohr_sweep_rate_zlz.pdf`
+- sweep envelope: `figures/bohr_sweep_rate_envelope.pdf`
+- combined four-panel figure: `figures/bohr_visibility_two_group_four_panel.pdf`

@@ -44,6 +44,7 @@ class AdiabaticPhaseDiagram:
         eccentricity=0.64,
         tidal_l=2,
         bh_spin=0.70,
+        bohr_multipoles=None,
     ):
         # 鐗╃悊甯告暟
         self.G = 6.6743e-11
@@ -63,6 +64,11 @@ class AdiabaticPhaseDiagram:
         
         # 棰勮绠楋細鏃犻噺绾茬殑绌洪棿閲嶅彔绉垎锛堜笉渚濊禆浜?M 鍜?alpha锛屽彧闇€绠椾竴娆★紒锛?
         self.mixing_overlap_data = self._precompute_mixing_overlaps()
+        self.bohr_tide = None
+        if self._bohr_m0_quadrupole_factor() is not None:
+            from bohr_tidal import AxisymmetricBohrTide
+            self.bohr_tide=AxisymmetricBohrTide(initial_state,final_state,
+                self._radial_wavefunction_dimensionless,multipoles=bohr_multipoles)
 
     def _radial_wavefunction_dimensionless(self, state, x):
         n, l, m = state
@@ -90,6 +96,17 @@ class AdiabaticPhaseDiagram:
         phi_integral = np.trapezoid(integrand, phi, axis=1)
         full_integral = np.trapezoid(phi_integral, theta)
         return abs(full_integral)
+
+    def _bohr_m0_quadrupole_factor(self):
+        initial, final = self.initial_state, self.final_state
+        if (
+            self.tidal_l != 2
+            or initial[0] == final[0]
+            or initial[1:] != final[1:]
+        ):
+            return None
+        ell, m = initial[1:]
+        return (3 * m * m - ell * (ell + 1)) / (2 * (2 * ell - 1) * (2 * ell + 3))
 
     def _precompute_mixing_overlaps(self):
         """棰勮绠楃┖闂撮噸鍙狅紝鏋佸ぇ鍦板姞閫熶簡 alpha 鎵弿"""
@@ -162,6 +179,10 @@ class AdiabaticPhaseDiagram:
             * i_out
             / max(m_omega, 1.0e-30) ** (7.0 / 3.0)
         )
+        if self._bohr_m0_quadrupole_factor() is not None:
+            return q_ratio * alpha_val**3 / m_omega * (
+                i_in / x_star**3 + x_star**2 * i_out
+            )
         return term_inner + term_outer
 
     def _finite_separation_fourier_coefficient(
@@ -230,6 +251,8 @@ class AdiabaticPhaseDiagram:
 
     def compute_z_components(self, alpha_val, q_ratio, M_bh_solar=1.0, eccentricity=None):
         eccentricity = self.eccentricity if eccentricity is None else float(eccentricity)
+        if self.bohr_tide is not None:
+            return self._full_bohr_components(alpha_val,q_ratio,M_bh_solar,eccentricity)
         omega_i = self._omega_real_geom(self.initial_state, alpha_val)
         omega_f = self._omega_real_geom(self.final_state, alpha_val)
         delta_omega_geom = abs(omega_i - omega_f)
@@ -256,7 +279,10 @@ class AdiabaticPhaseDiagram:
             eccentricity,
             self.resonance_harmonic,
         )
-        eta_rad_s = abs(np.sqrt(3.0 * np.pi / 10.0) * i_a * coefficient * omega_orb_res)
+        angular_factor = self._bohr_m0_quadrupole_factor()
+        if angular_factor is None:
+            angular_factor = np.sqrt(3.0 * np.pi / 10.0) * i_a
+        eta_rad_s = abs(angular_factor * coefficient * omega_orb_res)
 
         orbital_sweep_rate = (
             omega_orb_res**2
@@ -283,6 +309,32 @@ class AdiabaticPhaseDiagram:
 
     def compute_z_parameter(self, alpha_val, q_ratio, M_bh_solar=1.0, eccentricity=None):
         return self.compute_z_components(alpha_val, q_ratio, M_bh_solar, eccentricity)["z"]
+
+    def _full_bohr_components(self,alpha,q,mass,e):
+        from scipy.optimize import brentq
+        M=mass*self.M_sun;GM=self.G*M*(1+q)
+        rc=self.G*M/(self.c*alpha)**2
+        signed=(self._omega_real_geom(self.final_state,alpha)-self._omega_real_geom(self.initial_state,alpha))*self.c**3/(self.G*M)
+        bare=abs(signed);sign=np.sign(signed);n=self.resonance_harmonic
+        scale=q*alpha**3*self.c**3/(self.G*M)
+        def values(a,ecc):
+            d=self.bohr_tide.coefficients(a/rc,ecc,(n,))
+            return scale*d['eta'][0],bare+sign*scale*d['differential_diagonal']
+        def delta(a,ecc):return n*np.sqrt(GM/a**3)-values(a,ecc)[1]
+        a0=(GM/(bare/n)**2)**(1/3)
+        a=brentq(lambda v:delta(v,e),.97*a0,1.03*a0)
+        common=self.G**3*M**3*q*(1+q)/self.c**5
+        da=-64/5*common/a**3*self._eccentric_sweep_factor(e)
+        de=-304/15*common/a**4*e*(1+121/304*e*e)/(1-e*e)**2.5
+        ha=a*1e-5;he=1e-6
+        # At e=0 the coupling at n!=0 vanishes and de=0.
+        dede=0 if e==0 else (delta(a,e+he)-delta(a,e-he))/(2*he)*de
+        slope=(delta(a+ha,e)-delta(a-ha,e))/(2*ha)*da+dede
+        eta,omega=values(a,e)
+        return dict(z=abs(eta)**2/abs(slope),eta_rad_s=abs(eta),
+            resonance_sweep_rate=slope,x_star=a/rc,omega_res=omega,
+            diagonal_shift=omega-bare,eta_model='full_allowed_multipoles',
+            multipoles=self.bohr_tide.multipoles)
 
     def compute_z_parameter_legacy(self, alpha_val, q_ratio, M_bh_solar=1.0):
         """Return the legacy z parameter for a specified parameter point."""
@@ -434,3 +486,4 @@ def plot_adiabatic_phase_diagram():
 
 if __name__ == "__main__":
     plot_adiabatic_phase_diagram()
+

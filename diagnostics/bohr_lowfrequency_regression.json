@@ -1,0 +1,10 @@
+[
+  {
+    "family": "fine",
+    "max_absolute_coupling_change": 0.0
+  },
+  {
+    "family": "hyperfine",
+    "max_absolute_coupling_change": 0.0
+  }
+]

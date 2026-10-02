@@ -1,3 +1,9 @@
+"""Historical event/impulse alpha sweep.
+
+The full selected-pair matrix element is shared with the corrected solver, but
+this event approximation uses bare resonance frequencies. Reproduce current
+manuscript Figs. 1--3 with plot_bohr_full_model.py instead.
+"""
 from __future__ import annotations
 
 import argparse
@@ -16,12 +22,13 @@ from adiabaticlimit import AdiabaticPhaseDiagram
 BASE_DIR = Path(__file__).resolve().parent
 DIAGNOSTICS_DIR = BASE_DIR / "diagnostics"
 FIGURES_DIR = BASE_DIR / "figures"
-LETTER_FIGURES_DIR = FIGURES_DIR
+LETTER_FIGURES_DIR = BASE_DIR / "figures"
 
 TRANSITION_INITIAL = (6, 4, 4)
 TRANSITION_FINAL = (5, 4, 4)
 RESONANCE_HARMONIC = 1
 Q_REF = 1.0e-3
+ALPHA_REF = 0.30
 E_REF = 0.6373
 E_INIT = 0.65
 M1_MSUN = 1.0e-2
@@ -221,7 +228,7 @@ def write_outputs(
     DIAGNOSTICS_DIR.mkdir(parents=True, exist_ok=True)
 
     full_by_alpha = {round(item.alpha, 12): item for item in full_results}
-    scan_alphas = np.array([0.18, 0.20, 0.22, 0.24, 0.26, 0.28, 0.30, 0.32], dtype=float)
+    scan_alphas = np.array([0.14, 0.16, 0.18, 0.20, 0.22, 0.24, 0.26, 0.28, 0.30, 0.32], dtype=float)
     diagram = AdiabaticPhaseDiagram(
         initial_state=TRANSITION_INITIAL,
         final_state=TRANSITION_FINAL,
@@ -259,7 +266,7 @@ def write_outputs(
         writer.writeheader()
         writer.writerows(rows)
 
-    alpha_018 = next((item for item in full_results if np.isclose(item.alpha, 0.18)), None)
+    alpha_016 = next((item for item in full_results if np.isclose(item.alpha, 0.16)), None)
     alpha_030 = next((item for item in full_results if np.isclose(item.alpha, 0.30)), None)
     lines = [
         "# Bohr alpha-family numerical validation",
@@ -288,15 +295,15 @@ def write_outputs(
             "",
         ]
     )
-    if alpha_018 is not None and alpha_030 is not None:
-        ratio = alpha_030.c_post_num / max(alpha_018.c_post_num, 1.0e-300)
-        h_ratio = alpha_030.h_peak_post / max(alpha_018.h_peak_post, 1.0e-300)
+    if alpha_016 is not None and alpha_030 is not None:
+        ratio = alpha_030.c_post_num / max(alpha_016.c_post_num, 1.0e-300)
+        h_ratio = alpha_030.h_peak_post / max(alpha_016.h_peak_post, 1.0e-300)
         lines.extend(
             [
-                f"- The `alpha=0.18` full run gives `C_post={alpha_018.c_post_num:.3e}`, consistent with strongly suppressed outgoing transition coherence on the adiabatic branch.",
+                f"- The `alpha=0.16` full run gives `C_post={alpha_016.c_post_num:.3e}`, consistent with reduced outgoing transition coherence on the adiabatic branch.",
                 f"- The `alpha=0.30` full run gives `C_post={alpha_030.c_post_num:.3e}`, consistent with a finite outgoing two-level cloud.",
-                f"- The post-crossing coherence ratio is `C_post(0.30)/C_post(0.18)={ratio:.3e}`.",
-                f"- The post-crossing strain-amplitude ratio is `h_pk,post(0.30)/h_pk,post(0.18)={h_ratio:.3e}`.",
+                f"- The post-crossing coherence ratio is `C_post(0.30)/C_post(0.16)={ratio:.3e}`.",
+                f"- The post-crossing strain-amplitude ratio is `h_pk,post(0.30)/h_pk,post(0.16)={h_ratio:.3e}`.",
                 "- This supports the finite-coherence visibility statement: the same crossing family moves from the adiabatic branch with negligible outgoing coherence into an intermediate branch with a finite transition waveform.",
             ]
         )
@@ -346,14 +353,14 @@ def plot_outputs(
     ax_z.fill_between(alpha_grid, 1.0, np.maximum(z_grid, 1.0), color="#B45309", alpha=0.10, lw=0.0)
     ax_z.set_yscale("log")
     ax_z.set_xlim(alpha_grid[0], alpha_grid[-1])
-    ax_z.set_ylim(5.0e-2, 1.6e1)
+    ax_z.set_ylim(1.0e-2, 1.6e1)
     ax_z.set_ylabel(r"$z_{\rm LZ}$")
     ax_z.tick_params(direction="in", top=True, right=True, length=3.0, width=0.65)
     ax_z.text(0.173, 1.35, "adiabatic branch", color="#9A3412", fontsize=6.1, ha="left", va="bottom")
 
     top_ax = ax_z.twiny()
     top_ax.set_xlim(ax_z.get_xlim())
-    tick_alphas = np.array([0.18, 0.24, 0.30, 0.36])
+    tick_alphas = np.array([0.16, 0.24, 0.30, 0.36])
     tick_ratios = transition_frequency_ratio(
         AdiabaticPhaseDiagram(
             initial_state=TRANSITION_INITIAL,
@@ -421,7 +428,7 @@ def parse_args() -> argparse.Namespace:
         "--full-alphas",
         nargs="*",
         type=float,
-        default=[0.18, 0.30],
+        default=[0.16, 0.30],
         help="Alpha values for full time-domain validation. Defaults to the two Letter points.",
     )
     parser.add_argument(
@@ -441,7 +448,7 @@ def main() -> None:
         resonance_harmonic=RESONANCE_HARMONIC,
         eccentricity=E_REF,
     )
-    alpha_grid = np.linspace(0.16, 0.40, 320)
+    alpha_grid = np.linspace(0.14, 0.40, 320)
     z_grid_raw = np.array(
         [
             diagram.compute_z_parameter(float(alpha), Q_REF, M_bh_solar=1.0, eccentricity=E_REF)

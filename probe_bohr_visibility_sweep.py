@@ -26,7 +26,7 @@ from probe_bohr_alpha_family import (
 BASE_DIR = Path(__file__).resolve().parent
 DIAGNOSTICS_DIR = BASE_DIR / "diagnostics"
 FIGURES_DIR = BASE_DIR / "figures"
-LETTER_FIGURES_DIR = FIGURES_DIR
+LETTER_FIGURES_DIR = BASE_DIR / "figures"
 
 CSV_PATH = DIAGNOSTICS_DIR / "bohr_visibility_sweep.csv"
 SUMMARY_PATH = DIAGNOSTICS_DIR / "bohr_visibility_sweep.md"
@@ -40,7 +40,7 @@ COMBINED_FIGURE = FIGURES_DIR / "bohr_visibility_two_group_four_panel.pdf"
 LETTER_COMBINED_FIGURE = LETTER_FIGURES_DIR / "bohr_visibility_two_group_four_panel.pdf"
 LETTER_SWEEP_FIGURE = LETTER_FIGURES_DIR / "bohr_sweep_rate_evidence.pdf"
 
-Z_REF = 0.5740777240495206
+Z_REF = 0.055833762724807404
 Z_SLOW = 7.55025
 Z_FAST_WEAK = 1.0e-4
 DISPLAY_WIDTH = 180.0
@@ -111,7 +111,7 @@ def build_sweep_points() -> list[SweepPoint]:
 def representative_sweep_envelopes() -> dict[str, dict[str, np.ndarray | float]]:
     cases = {
         "slow": {"z": Z_SLOW, "color": "#9A3412", "label": r"slow: $z_{\rm LZ}=7.55$"},
-        "reference": {"z": Z_REF, "color": "#047857", "label": r"finite: $z_{\rm LZ}=0.57$"},
+        "reference": {"z": Z_REF, "color": "#047857", "label": r"finite: $z_{\rm LZ}=0.056$"},
         "very fast": {"z": Z_FAST_WEAK, "color": "#4B5563", "label": r"too fast: $z_{\rm LZ}=10^{-4}$"},
     }
     out: dict[str, dict[str, np.ndarray | float]] = {}
@@ -137,7 +137,7 @@ def alpha_family_curves() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarra
         resonance_harmonic=1,
         eccentricity=E_REF,
     )
-    alpha_grid = np.linspace(0.16, 0.40, 320)
+    alpha_grid = np.linspace(0.14, 0.40, 320)
     z_grid = np.array(
         [
             diagram.compute_z_parameter(float(alpha), Q_REF, M_bh_solar=1.0, eccentricity=E_REF)
@@ -185,7 +185,7 @@ def write_sweep_outputs(points: list[SweepPoint], finite_results) -> None:
             )
 
     finite_by_alpha = {round(item.alpha, 12): item for item in finite_results}
-    alpha018 = finite_by_alpha.get(round(0.18, 12))
+    alpha016 = finite_by_alpha.get(round(0.16, 12))
     alpha030 = finite_by_alpha.get(round(0.30, 12))
     ref_point = min(points, key=lambda item: abs(item.z_lz - Z_REF))
     slow_point = min(points, key=lambda item: abs(item.z_lz - Z_SLOW))
@@ -215,15 +215,15 @@ def write_sweep_outputs(points: list[SweepPoint], finite_results) -> None:
         "## Physical finite-crossing bridge",
         "",
     ]
-    if alpha018 is not None and alpha030 is not None:
+    if alpha016 is not None and alpha030 is not None:
         lines.extend(
             [
                 "| alpha | z_LZ | C_post | h_pk,post |",
                 "| ---: | ---: | ---: | ---: |",
-                f"| 0.18 | {alpha018.z_lz:.6g} | {alpha018.c_post_num:.6g} | {alpha018.h_peak_post:.6e} |",
+                f"| 0.16 | {alpha016.z_lz:.6g} | {alpha016.c_post_num:.6g} | {alpha016.h_peak_post:.6e} |",
                 f"| 0.30 | {alpha030.z_lz:.6g} | {alpha030.c_post_num:.6g} | {alpha030.h_peak_post:.6e} |",
                 "",
-                f"The physical alpha-family coherence ratio is {alpha030.c_post_num / max(alpha018.c_post_num, 1.0e-300):.3e}.",
+                f"The physical alpha-family coherence ratio is {alpha030.c_post_num / max(alpha016.c_post_num, 1.0e-300):.3e}.",
             ]
         )
     lines.extend(
@@ -246,7 +246,7 @@ def plot_finite_z(ax, alpha_grid, z_grid, c_grid, finite_results, show_title=Tru
     ax.axhline(1.0, color="0.35", lw=0.7, ls="--")
     ax.set_yscale("log")
     ax.set_xlim(alpha_grid[0], alpha_grid[-1])
-    ax.set_ylim(5.0e-2, 1.6e1)
+    ax.set_ylim(1.0e-2, 1.6e1)
     ax.set_xlabel(r"$\alpha$")
     ax.set_ylabel(r"$z_{\rm LZ}$")
     if show_title:
@@ -268,7 +268,7 @@ def plot_finite_envelope(ax, finite_results, show_title=True):
     for item, color, label in zip(
         finite_results,
         ["#9A3412", "#047857"],
-        [r"$\alpha=0.18$", r"$\alpha=0.30$"],
+        [r"$\alpha=0.16$", r"$\alpha=0.30$"],
     ):
         ax.plot(item.local_x, item.coherence, color=color, lw=1.0, label=label)
         ax.axhline(item.c_post_num, color=color, lw=0.65, ls=":", alpha=0.9)
@@ -322,7 +322,7 @@ def plot_sweep_envelope(ax, envelopes, show_title=True):
     ax.set_ylabel(r"$|c_i^\ast\tilde c_f|$")
     if show_title:
         ax.set_title("controlled-sweep envelope")
-    ax.legend(frameon=False, loc="upper right", handlelength=1.35, borderaxespad=0.25)
+    ax.legend(frameon=False, loc="center right", bbox_to_anchor=(0.98, 0.72), handlelength=1.35, borderaxespad=0.25)
     ax.tick_params(direction="in", top=True, right=True, length=3.0, width=0.65)
 
 
@@ -373,7 +373,7 @@ def save_combined(alpha_grid, z_grid, c_grid, finite_results, points, envelopes)
 
 def main() -> None:
     configure_matplotlib()
-    finite_results = [run_full_alpha(0.18, secular_samples=500), run_full_alpha(0.30, secular_samples=500)]
+    finite_results = [run_full_alpha(0.16, secular_samples=500), run_full_alpha(0.30, secular_samples=500)]
     finite_results.sort(key=lambda item: item.alpha)
     alpha_grid, z_grid, c_grid, _ = alpha_family_curves()
     points = build_sweep_points()
@@ -403,4 +403,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    # The manuscript now compares prescribed orbits with the full pair projection.
+    from plot_bohr_full_model import figure_lz
+    figure_lz()

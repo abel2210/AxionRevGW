@@ -23,8 +23,10 @@ OUTPUT_DIR = SCRIPT_DIR / "snr_scan_data"
 FIGURE_DIR = SCRIPT_DIR / "figures"
 DETECTOR = "DECIGO"
 REFERENCE_DISTANCE_KPC = 100.0
-DEFAULT_DETECTOR_CURVE_KIND = "characteristic_strain"
-SNR_MODEL_VERSION = "deterministic_strain_psd_v12_nyquist_checked"
+DEFAULT_DETECTOR_CURVE_KIND = "asd"
+# Legacy selected-n=4 gated scan.  The revised multiharmonic four-year scan
+# used by the current figure is produced by a separate probe pipeline.
+SNR_MODEL_VERSION = "deterministic_strain_psd_v14_decigo_asd_evolved_e"
 DEFAULT_ALPHA_MIN = 0.10
 DEFAULT_ALPHA_MAX = 0.30
 SMALL_ALPHA_RECOMMENDED_MAX = 0.30

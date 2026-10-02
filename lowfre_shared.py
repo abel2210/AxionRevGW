@@ -175,7 +175,7 @@ def build_paper_inspired_lowfreq_profile():
         "cloud_evolution_mode": "band_gated",
         "solver_profile": "accurate",
         "detector_names": ("DECIGO",),
-        "detector_curve_kinds": {"DECIGO": "characteristic_strain"},
+        "detector_curve_kinds": {"DECIGO": "asd"},
         "hansen_e_samples": 48,
         "hansen_M_samples": 1024,
         "overlap_grid_points": 4096,
@@ -523,7 +523,8 @@ class EccentricResonantTidalGA:
         self.parallel_workers = max(1, int(parallel_workers if parallel_workers is not None else min(8, cpu_count)))
         self.mismatch_threshold_d = float(mismatch_threshold_d)
         self.mismatch_fft_point_cap = int(max(128, mismatch_fft_point_cap))
-        default_curve_kinds = {"DECIGO": "characteristic_strain"}
+        # DECIGO.csv tabulates strain amplitude spectral density sqrt(S_n).
+        default_curve_kinds = {"DECIGO": "asd"}
         if detector_curve_kinds is not None:
             default_curve_kinds.update(
                 {str(key).upper(): str(value).lower() for key, value in detector_curve_kinds.items()}
@@ -756,12 +757,16 @@ class EccentricResonantTidalGA:
         return cached
 
     def _hansen_cache_key(self):
-        e_max = min(0.95, max(0.05, self.e_init))
+        # Tidal feedback can increase eccentricity above e_init over a long
+        # observation.  Cover the evolved orbit instead of freezing the
+        # Hansen coefficients at their initial-eccentricity endpoint.
+        e_max = 0.95
+        e_samples = max(self.hansen_e_samples, 160)
         return (
             tuple(self.harmonics.tolist()),
             int(self.radial_power),
             int(self.hansen_tidal_m),
-            int(self.hansen_e_samples),
+            int(e_samples),
             int(self.hansen_M_samples),
             round(float(e_max), 12),
         )
@@ -1179,10 +1184,11 @@ class EccentricResonantTidalGA:
         with self.__class__._CACHE_LOCK:
             cached = self.__class__._HANSEN_TABLE_CACHE.get(cache_key)
             if cached is None:
-                e_max = min(0.95, max(0.05, self.e_init))
-                e_grid = np.linspace(0.0, e_max, self.hansen_e_samples)
-                real_table = np.zeros((len(self.harmonics), self.hansen_e_samples))
-                imag_table = np.zeros((len(self.harmonics), self.hansen_e_samples))
+                e_max = 0.95
+                e_samples = max(self.hansen_e_samples, 160)
+                e_grid = np.linspace(0.0, e_max, e_samples)
+                real_table = np.zeros((len(self.harmonics), e_samples))
+                imag_table = np.zeros((len(self.harmonics), e_samples))
 
                 mean_anomaly = np.linspace(0.0, 2.0 * np.pi, self.hansen_M_samples, endpoint=False)
                 phase_matrix = np.exp(1j * np.outer(self.harmonics, mean_anomaly))

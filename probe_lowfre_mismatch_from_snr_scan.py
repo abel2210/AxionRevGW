@@ -264,7 +264,7 @@ def _build_simulator(point):
         {
             "distance_Mpc": point.distance_kpc / 1000.0,
             "detector_names": (DETECTOR,),
-            "detector_curve_kinds": {DETECTOR: "characteristic_strain"},
+            "detector_curve_kinds": {DETECTOR: "asd"},
             "module_stem": f"{preset_cls.__module__}_snrprobe",
             "save_figure_dir": "figures/snr_threshold_probe",
             "save_time_series_data_dir": "diagnostics/lowfre_mismatch_threshold_probe/waveform_data",

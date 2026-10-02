@@ -9,16 +9,16 @@ The full time-domain checks use `lz_window_widths=240` and extract the post-cros
 
 | alpha | z_LZ | C_out(LZ) | C_post(num) | h_pk,post | post orbits | interpretation |
 | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| 0.18 | 7.55025 | 0 | 0.00421343 | 8.796774e-29 | 1441702.5 | adiabatic branch with strongly suppressed outgoing coherence |
-| 0.30 | 0.574078 | 0.162468 | 0.154567 | 9.068154e-27 | 118182.7 | finite-coherence branch |
+| 0.16 | 1.31061 | 0.0162847 | 0.0162846 | 2.682528e-28 | 1277748.0 | adiabatic branch with strongly suppressed outgoing coherence |
+| 0.30 | 0.0558338 | 0.45644 | 0.456439 | 2.677838e-26 | 175764.0 | finite-coherence branch |
 
 ## Verdict
 
-- The `alpha=0.18` full run gives `C_post=4.213e-03`, consistent with strongly suppressed outgoing transition coherence on the adiabatic branch.
-- The `alpha=0.30` full run gives `C_post=1.546e-01`, consistent with a finite outgoing two-level cloud.
-- The post-crossing coherence ratio is `C_post(0.30)/C_post(0.18)=3.668e+01`.
-- The post-crossing strain-amplitude ratio is `h_pk,post(0.30)/h_pk,post(0.18)=1.031e+02`.
+- The `alpha=0.16` full run gives `C_post=1.628e-02`, consistent with reduced outgoing transition coherence on the adiabatic branch.
+- The `alpha=0.30` full run gives `C_post=4.564e-01`, consistent with a finite outgoing two-level cloud.
+- The post-crossing coherence ratio is `C_post(0.30)/C_post(0.16)=2.803e+01`.
+- The post-crossing strain-amplitude ratio is `h_pk,post(0.30)/h_pk,post(0.16)=9.983e+01`.
 - This supports the finite-coherence visibility statement: the same crossing family moves from the adiabatic branch with negligible outgoing coherence into an intermediate branch with a finite transition waveform.
 
-CSV table: `D:/power/paper/AxionGW/code/finalcode/diagnostics/bohr_alpha_family.csv`
-Figure: `D:/power/paper/AxionGW/code/finalcode/figures/bohr_alpha_family_summary.pdf`
+CSV table: `diagnostics/bohr_alpha_family.csv`
+Figure: `figures/bohr_alpha_family_summary.pdf`

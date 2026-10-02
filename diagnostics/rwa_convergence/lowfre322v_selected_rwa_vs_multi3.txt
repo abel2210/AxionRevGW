@@ -1,0 +1,15 @@
+case: lowfre322v
+transition: $|322\rangle\to|300\rangle$
+selected_active_harmonics: 4
+multi3_active_harmonics: 3,4,5
+max_abs_population_difference: 2.0049083693060958e-10
+selected_population_scale: 3.0949799039333925e-11
+max_fractional_population_difference: 6.477936631375439
+max_abs_coherence_difference: 9.65250946412956e-06
+selected_coherence_scale: 5.563254327794212e-06
+max_fractional_coherence_difference: 1.7350473114100298
+max_fractional_semimajor_axis_difference: 2.680880340148362e-08
+final_fractional_semimajor_axis_difference: -2.3058568784722533e-08
+duration_years: 0.4
+alpha: 0.25
+observation_years: 0.4
